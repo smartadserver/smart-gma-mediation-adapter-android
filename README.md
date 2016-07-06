@@ -1,4 +1,4 @@
-Smart AdServer - Google Ads Mobile SDK Adapter
+Smart AdServer - Google Ads Mobile SDK Adapter for Android
 ==============================================
 
 Introduction
