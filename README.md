@@ -17,5 +17,5 @@ You can declare _SDK Mediation Creatives_ in the _DFP_ interface. To setup the _
 
 More infos
 ----------
-You can find more informations about the _Smart AdServer Android SDK_ and the _AndroidDFPAdapter_ in the official documentation:
+You can find more informations about the _Smart AdServer Android SDK_ and the _Google Ads Mobile Mediation Adapters_ in the official documentation:
 http://help.smartadserver.com/en/
