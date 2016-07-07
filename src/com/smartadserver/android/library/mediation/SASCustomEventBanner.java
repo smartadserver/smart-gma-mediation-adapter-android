@@ -116,12 +116,21 @@ public class SASCustomEventBanner implements CustomEventBanner {
 
                 // add state change listener to detect when ad is closed
                 sasBannerView.addStateChangeListener(new SASAdView.OnStateChangeListener() {
+                    boolean wasOpened = false;
                     public void onStateChanged(
                             SASAdView.StateChangeEvent stateChangeEvent) {
                         switch (stateChangeEvent.getType()) {
-                            case SASAdView.StateChangeEvent.VIEW_HIDDEN:
-                                // ad was closed
-                                customEventBannerListener.onAdClosed();
+                            case SASAdView.StateChangeEvent.VIEW_EXPANDED:
+                                // ad was expanded
+                                customEventBannerListener.onAdOpened();
+                                wasOpened = true;
+                                break;
+                            case SASAdView.StateChangeEvent.VIEW_DEFAULT:
+                                // ad was collapsed
+                                if (wasOpened) {
+                                    customEventBannerListener.onAdClosed();
+                                    wasOpened = false;
+                                }
                                 break;
                         }
                     }

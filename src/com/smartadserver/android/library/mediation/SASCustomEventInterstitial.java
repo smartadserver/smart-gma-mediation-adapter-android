@@ -29,6 +29,9 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
     // Smart interstitial view that will handle the mediation ad call
     SASInterstitialView sasInterstitialView;
 
+    // DFP callback
+    CustomEventInterstitialListener interstitialListener;
+
     // Container view for offscreen interstitial loading (as SASInterstitialView is displayed immediately after successful loading)
     FrameLayout interstitialContainer;
 
@@ -46,6 +49,9 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
 
         // get smart placement object
         SASCustomEventUtil.SASAdPlacement adPlacement = SASCustomEventUtil.getPlacementFromString(s,mediationAdRequest);
+
+        // store dfp callback for future interaction
+        interstitialListener = customEventInterstitialListener;
 
         if (adPlacement == null) {
             // incorrect smart placement : exit in error
@@ -189,6 +195,11 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
         // now actually add the interstitialContainer including appropriate padding fir status/navigation bars
         if (rootContentView instanceof ViewGroup) {
             ((ViewGroup)rootContentView).addView(interstitialContainer);
+
+            // notify DFP listener that ad was presented full screen
+            if (interstitialListener != null) {
+                interstitialListener.onAdOpened();
+            }
         }
     }
 
