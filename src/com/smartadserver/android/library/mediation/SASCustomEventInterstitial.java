@@ -56,7 +56,13 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
                 mAdResponseHandler = new SASAdView.AdResponseHandler() {
                     @Override
                     public void adLoadingCompleted(SASAdElement sasAdElement) {
-                        // wait for expand to happen to notify AdMob of AdLoaded
+                        //  notify AdMob of AdLoaded
+                        sasInterstitialView.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                customEventInterstitialListener.onAdLoaded();
+                            }
+                        });
                     }
 
                     @Override
@@ -118,10 +124,6 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
                                     ((ViewGroup)parent).removeView(interstitialContainer);
                                 }
                                 customEventInterstitialListener.onAdClosed();
-                                break;
-                            case SASAdView.StateChangeEvent.VIEW_EXPANDED:
-                                // consider ad loaded
-                                customEventInterstitialListener.onAdLoaded();
                                 break;
                         }
                     }
