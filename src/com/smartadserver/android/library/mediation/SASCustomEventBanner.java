@@ -84,7 +84,7 @@ public class SASCustomEventBanner implements CustomEventBanner {
                     @Override
                     public void open(String url) {
                         super.open(url);
-                        if (mAdWasOpened) {
+                        if (isAdWasOpened()) {
                             SASAdElement adElement = sasBannerView.getCurrentAdElement();
                             final boolean openInApp = adElement.isOpenClickInApplication();
                             sasBannerView.post(new Runnable() {

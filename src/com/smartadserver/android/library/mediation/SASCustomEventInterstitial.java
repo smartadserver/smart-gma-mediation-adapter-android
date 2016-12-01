@@ -101,7 +101,7 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
                     @Override
                     public void open(String url) {
                         super.open(url);
-                        if (mAdWasOpened) {
+                        if (isAdWasOpened()) {
                             SASAdElement adElement = sasInterstitialView.getCurrentAdElement();
                             final boolean openInApp = adElement.isOpenClickInApplication();
                             sasInterstitialView.post(new Runnable() {
