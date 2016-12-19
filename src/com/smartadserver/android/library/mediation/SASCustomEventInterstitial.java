@@ -63,32 +63,40 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
                     @Override
                     public void adLoadingCompleted(SASAdElement sasAdElement) {
                         //  notify AdMob of AdLoaded
-                        sasInterstitialView.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                customEventInterstitialListener.onAdLoaded();
-                            }
-                        });
+						synchronized(SASCustomEventInterstitial.this) {
+							if (sasInterstitialView != null) {
+								sasInterstitialView.post(new Runnable() {
+									@Override
+									public void run() {
+										customEventInterstitialListener.onAdLoaded();
+									}
+								});
+							}
+						}
                     }
 
                     @Override
                     public void adLoadingFailed(final Exception e) {
                         // notify admob that ad call has failed with appropriate eror code
-                        sasInterstitialView.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                // default generic error code
-                                int errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR;
-                                if (e instanceof SASNoAdToDeliverException) {
-                                    // no ad to deliver
-                                    errorCode = AdRequest.ERROR_CODE_NO_FILL;
-                                } else if (e instanceof SASAdTimeoutException) {
-                                    // ad request timeout translates to admob network error
-                                    errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR;
-                                }
-                                customEventInterstitialListener.onAdFailedToLoad(errorCode);
-                            }
-                        });
+						synchronized(SASCustomEventInterstitial.this) {
+							if (sasInterstitialView != null) {
+								sasInterstitialView.post(new Runnable() {
+									@Override
+									public void run() {
+										// default generic error code
+										int errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR;
+										if (e instanceof SASNoAdToDeliverException) {
+											// no ad to deliver
+											errorCode = AdRequest.ERROR_CODE_NO_FILL;
+										} else if (e instanceof SASAdTimeoutException) {
+											// ad request timeout translates to admob network error
+											errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR;
+										}
+										customEventInterstitialListener.onAdFailedToLoad(errorCode);
+									}
+								});
+							}
+						}
                     }
                 };
 
@@ -208,7 +216,7 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
      * Forwards the onDestroy() call to SASInterstitialView
      */
     @Override
-    public void onDestroy() {
+    public synchronized void onDestroy() {
         if (sasInterstitialView != null) {
             sasInterstitialView.onDestroy();
             sasInterstitialView = null;

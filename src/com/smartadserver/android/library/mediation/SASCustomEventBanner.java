@@ -45,33 +45,43 @@ public class SASCustomEventBanner implements CustomEventBanner {
                 mAdResponseHandler = new SASAdView.AdResponseHandler() {
                     @Override
                     public void adLoadingCompleted(SASAdElement sasAdElement) {
-                        sasBannerView.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                // notify admob that ad call has succeeded
-                                customEventBannerListener.onAdLoaded(sasBannerView);
+                        synchronized (SASCustomEventBanner.this) {
+                            if (sasBannerView != null) {
+                                sasBannerView.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        // notify admob that ad call has succeeded
+                                        customEventBannerListener.onAdLoaded(sasBannerView);
+                                    }
+                                });
                             }
-                        });
+                        }
                     }
 
                     @Override
                     public void adLoadingFailed(final Exception e) {
                         // notify admob that ad call has failed with appropriate eror code
-                        sasBannerView.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                // default generic error code
-                                int errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR;
-                                if (e instanceof SASNoAdToDeliverException) {
-                                    // no ad to deliver
-                                    errorCode = AdRequest.ERROR_CODE_NO_FILL;
-                                } else if (e instanceof SASAdTimeoutException) {
-                                    // ad request timeout translates to admob network error
-                                    errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR;
-                                }
-                                customEventBannerListener.onAdFailedToLoad(errorCode);
+                        synchronized (SASCustomEventBanner.this) {
+                            if (sasBannerView != null) {
+                                sasBannerView.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        // default generic error code
+                                        int errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR;
+                                        if (e instanceof SASNoAdToDeliverException) {
+                                            // no ad to deliver
+                                            errorCode = AdRequest.ERROR_CODE_NO_FILL;
+                                        } else if (e instanceof SASAdTimeoutException) {
+                                            // ad request timeout translates to admob network error
+                                            errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR;
+                                        }
+                                        customEventBannerListener.onAdFailedToLoad(errorCode);
+                                    }
+                                });
                             }
-                        });
+
+                        }
+
                     }
                 };
 
@@ -139,9 +149,11 @@ public class SASCustomEventBanner implements CustomEventBanner {
                 // pass received location on to SASBannerView
                 sasBannerView.setLocation(mediationAdRequest.getLocation());
 
+
                 // Now request ad for this SASBannerView
                 sasBannerView.loadAd(adPlacement.siteId,adPlacement.pageId,adPlacement.formatId,true,
                         adPlacement.targeting,mAdResponseHandler,10000);
+
             }
         }
 
@@ -153,7 +165,7 @@ public class SASCustomEventBanner implements CustomEventBanner {
      * Forwards the onDestroy() call to SASBannerView
      */
     @Override
-    public void onDestroy() {
+    public synchronized void onDestroy() {
         if (sasBannerView != null) {
             sasBannerView.onDestroy();
             sasBannerView = null;
