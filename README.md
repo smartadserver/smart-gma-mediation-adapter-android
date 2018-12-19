@@ -1,26 +1,40 @@
-Smart AdServer - Google Ads Mobile SDK Adapter for Android
+Smart AdServer - Google Mobile Ads SDK Adapter
 ==============================================
 
 Introduction
 ------------
-The _Smart AdServer Android SDK_ can be used through _Google Ads Mobile SDK (DFP)_ using the adapter provided in this repository for both _SASBannerView_ and _SASInterstitialView_.
-We'll be following the instructions provided by DFP [here](https://support.google.com/dfp_premium/answer/6238717?hl=en).
+The _Smart Display SDK_ can be used through _Google Mobile Ads_ using the adapter provided in this repository for banners, interstitial and native ads. Those adapters are compatible with the _Smart Display SDK_ v7.0.
 
 Setup
 -----
 
-To start using the _Smart AdServer Android SDK_ through DFP, simply add all the classes included in this repository in your project (**the project needs to include a correctly installed _Smart AdServer Android SDK_**).
+1) Install the _Google Mobile Ads SDK_ according to the official documentation https://developers.google.com/admob/android/sdk.
 
-You can declare _SDK Mediation Creatives_ in the _DFP_ interface. Refer to the article [Add a new mobile creative](https://support.google.com/dfp_premium/answer/1209767) in Google DFP documentation for detailed instructions *Note: make sure to use "SDK Mediation" as the creative type.
+2) Install the _Smart Display SDK_ by adding the ```smart-display-sdk``` dependency to your _gradle_ file (more info in [the documentation](http://documentation.smartadserver.com/displaySDK/android/gettingstarted.html)).
 
-To setup the _Custom Event_ (under _Ad networks_), you need to fill:
+3) Checkout this repository and copy the _Custom event classes_ you need into your Android project:
 
-* the _Parameter_ field: set your _Smart AdServer_ IDs using slash separator `[siteID]/[pageID]/[formatID]`
-* the _Class Name_ field: set `com.smartadserver.android.library.mediation.SASCustomEventBanner` for banners and `com.smartadserver.android.library.mediation.SASCustomEventInterstitial` for interstitials
-* 
+* ```SASGMACustomEventBanner``` for banners.
+* ```SASGMACustomEventInterstitial``` for interstitials.
+* ```SASGMACustomEventNative``` for native ads.
+* ```SASGMACustomEventBase``` in any case.
+
+4) Edit the ```SASGMACustomEventBase``` class and replace the default base url with your dedicated base url.
+
+5) In your Google Ad Mob or Google Ad Manager interface, depending on which tool you use, you will need to setup a mediation group and add a custom event as an 'ad source' that will be activated on ad units of your application.
+
+Typically, to deliver Smart ads on a Google ad unit, you need to create a custom event with :
+
+* the _Class Name_ field: set `com.smartadserver.android.library.mediation.SASGMACustomEventBanner` for banners, `com.smartadserver.android.library.mediation.SASGMACustomEventInterstitial` for interstitials and `com.smartadserver.android.library.mediation.SASGMACustomEventNative` for native ads
+* the _Parameter_ (optional) field: set your _Smart AdServer_ IDs concatenated as a string using slash separator `[siteID]/[pageID]/[formatID]`
+
+For further information, please refer to Google documentation :
+
+* For AdMob, https://support.google.com/admob/answer/3124703?hl=en&ref_topic=7383089
+* For Google Ad Manager, https://support.google.com/admanager/answer/6272813?hl=en
 
 
 More infos
 ----------
-You can find more informations about the _Smart AdServer Android SDK_ and the _Google Ads Mobile Mediation Adapters_ in the official documentation:
-http://help.smartadserver.com/en/
+You can find more informations about the _Smart Display SDK_ and the _Google Mobile Ads SDK Adapter_ in the official documentation:
+http://documentation.smartadserver.com/displaySDK
