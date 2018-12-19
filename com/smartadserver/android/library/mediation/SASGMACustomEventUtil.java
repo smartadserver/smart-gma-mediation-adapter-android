@@ -7,7 +7,7 @@ import java.util.Set;
 /**
  * Utility class
  */
-public class SASCustomEventUtil {
+public class SASGMACustomEventUtil {
 
     /**
      * Convenience holder class for ad placement parameters

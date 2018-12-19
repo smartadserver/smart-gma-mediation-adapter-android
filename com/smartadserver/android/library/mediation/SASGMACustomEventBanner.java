@@ -18,7 +18,7 @@ import com.smartadserver.android.library.ui.SASAdView;
 /**
  * Class that handles an adMob mediation banner ad call to Smart AdServer SDK.
  */
-public class SASCustomEventBanner implements CustomEventBanner {
+public class SASGMACustomEventBanner implements CustomEventBanner {
 
     // Smart banner view that will handle the mediation ad call
     SASBannerView sasBannerView;
@@ -34,7 +34,7 @@ public class SASCustomEventBanner implements CustomEventBanner {
     public void requestBannerAd(final Context context, final CustomEventBannerListener customEventBannerListener,
                                 String s, final AdSize adSize, MediationAdRequest mediationAdRequest, Bundle bundle) {
         // get smart placement object
-        SASCustomEventUtil.SASAdPlacement adPlacement = SASCustomEventUtil.getPlacementFromString(s,mediationAdRequest);
+        SASGMACustomEventUtil.SASAdPlacement adPlacement = SASGMACustomEventUtil.getPlacementFromString(s,mediationAdRequest);
 
         if (adPlacement == null) {
             // incorrect smart placement : exit in error
@@ -45,7 +45,7 @@ public class SASCustomEventBanner implements CustomEventBanner {
                 mAdResponseHandler = new SASAdView.AdResponseHandler() {
                     @Override
                     public void adLoadingCompleted(SASAdElement sasAdElement) {
-                        synchronized (SASCustomEventBanner.this) {
+                        synchronized (SASGMACustomEventBanner.this) {
                             if (sasBannerView != null) {
                                 sasBannerView.post(new Runnable() {
                                     @Override
@@ -61,7 +61,7 @@ public class SASCustomEventBanner implements CustomEventBanner {
                     @Override
                     public void adLoadingFailed(final Exception e) {
                         // notify admob that ad call has failed with appropriate eror code
-                        synchronized (SASCustomEventBanner.this) {
+                        synchronized (SASGMACustomEventBanner.this) {
                             if (sasBannerView != null) {
                                 sasBannerView.post(new Runnable() {
                                     @Override
@@ -96,13 +96,15 @@ public class SASCustomEventBanner implements CustomEventBanner {
                         super.open(url);
                         if (isAdWasOpened()) {
                             SASAdElement adElement = sasBannerView.getCurrentAdElement();
-                            final boolean openInApp = adElement.isOpenClickInApplication();
                             sasBannerView.post(new Runnable() {
                                 @Override
                                 public void run() {
                                     customEventBannerListener.onAdClicked();
                                     customEventBannerListener.onAdOpened();
-                                    if (!openInApp) {
+                                    try {
+                                        Class.forName("android.support.customtabs.CustomTabsIntent");
+                                    } catch (ClassNotFoundException e) {
+                                        // open ad will lauch default browser
                                         customEventBannerListener.onAdLeftApplication();
                                     }
                                 }

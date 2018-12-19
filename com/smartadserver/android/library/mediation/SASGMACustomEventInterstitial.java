@@ -24,7 +24,7 @@ import com.smartadserver.android.library.ui.SASAdView;
 /**
  * Class that handles an adMob mediation interstitial ad call to Smart AdServer SDK.
  */
-public class SASCustomEventInterstitial implements CustomEventInterstitial {
+public class SASGMACustomEventInterstitial implements CustomEventInterstitial {
 
     // Smart interstitial view that will handle the mediation ad call
     SASInterstitialView sasInterstitialView;
@@ -48,7 +48,7 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
                                       String s, MediationAdRequest mediationAdRequest, Bundle bundle) {
 
         // get smart placement object
-        SASCustomEventUtil.SASAdPlacement adPlacement = SASCustomEventUtil.getPlacementFromString(s,mediationAdRequest);
+        SASGMACustomEventUtil.SASAdPlacement adPlacement = SASGMACustomEventUtil.getPlacementFromString(s,mediationAdRequest);
 
         // store dfp callback for future interaction
         interstitialListener = customEventInterstitialListener;
@@ -63,7 +63,7 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
                     @Override
                     public void adLoadingCompleted(SASAdElement sasAdElement) {
                         //  notify AdMob of AdLoaded
-						synchronized(SASCustomEventInterstitial.this) {
+						synchronized(SASGMACustomEventInterstitial.this) {
 							if (sasInterstitialView != null) {
 								sasInterstitialView.post(new Runnable() {
 									@Override
@@ -78,7 +78,7 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
                     @Override
                     public void adLoadingFailed(final Exception e) {
                         // notify admob that ad call has failed with appropriate eror code
-						synchronized(SASCustomEventInterstitial.this) {
+						synchronized(SASGMACustomEventInterstitial.this) {
 							if (sasInterstitialView != null) {
 								sasInterstitialView.post(new Runnable() {
 									@Override
@@ -111,13 +111,15 @@ public class SASCustomEventInterstitial implements CustomEventInterstitial {
                         super.open(url);
                         if (isAdWasOpened()) {
                             SASAdElement adElement = sasInterstitialView.getCurrentAdElement();
-                            final boolean openInApp = adElement.isOpenClickInApplication();
                             sasInterstitialView.post(new Runnable() {
                                 @Override
                                 public void run() {
                                     customEventInterstitialListener.onAdClicked();
                                     customEventInterstitialListener.onAdOpened();
-                                    if (!openInApp) {
+                                    try {
+                                        Class.forName("android.support.customtabs.CustomTabsIntent");
+                                    } catch (ClassNotFoundException e) {
+                                        // open ad will lauch default browser
                                         customEventInterstitialListener.onAdLeftApplication();
                                     }
                                 }
