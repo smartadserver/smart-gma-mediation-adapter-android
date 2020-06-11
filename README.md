@@ -10,7 +10,7 @@ Setup
 
 1) Install the _Google Mobile Ads SDK_ according to the official documentation https://developers.google.com/admob/android/sdk.
 
-2) Install the _Smart Display SDK_ by adding the ```smart-display-sdk``` dependency to your _gradle_ file (more info in [the documentation](http://documentation.smartadserver.com/displaySDK/android/gettingstarted.html)).
+2) Install the _Smart Display SDK_ by adding the ```smart-display-sdk``` dependency to your _gradle_ file (more info in [the documentation](https://documentation.smartadserver.com/displaySDK/android/gettingstarted.html)).
 
 3) Checkout this repository and copy the _Custom event classes_ you need into your Android project:
 
@@ -37,4 +37,4 @@ For further information, please refer to Google documentation :
 More infos
 ----------
 You can find more informations about the _Smart Display SDK_ and the _Google Mobile Ads SDK Adapter_ in the official documentation:
-http://documentation.smartadserver.com/displaySDK
+https://documentation.smartadserver.com/displaySDK
