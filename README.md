@@ -19,7 +19,7 @@ Setup
 * ```SASGMACustomEventNative``` for native ads.
 * ```SASGMACustomEventBase``` in any case.
 
-4) Edit the ```SASGMACustomEventBase``` class and replace the default base url with your dedicated base url.
+4) Only for Smart AdServer SDK version < v7.6, edit the ```SASGMACustomEventBase``` class and change the `SMART_BASE_URL` value with the domain assigned to your Smart's Manage Network.
 
 5) In your Google Ad Mob or Google Ad Manager interface, depending on which tool you use, you will need to setup a mediation group and add a custom event as an 'ad source' that will be activated on ad units of your application.
 
