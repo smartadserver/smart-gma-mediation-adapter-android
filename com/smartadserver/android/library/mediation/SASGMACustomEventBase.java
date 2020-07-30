@@ -13,9 +13,6 @@ import java.util.Set;
  */
 public class SASGMACustomEventBase {
 
-    // TODO replace the base url with your own.
-    private static final String SMART_BASE_URL = "https://mobile.smartadserver.com";
-
     /**
      * Configure the Smart Display SDK if needed and
      *
@@ -49,7 +46,7 @@ public class SASGMACustomEventBase {
         if (!SASConfiguration.getSharedInstance().isConfigured()) {
             try {
                 if (siteId >= 1) {
-                    SASConfiguration.getSharedInstance().configure(context, siteId, SMART_BASE_URL);
+                    SASConfiguration.getSharedInstance().configure(context, siteId);
                 } else {
                     return null;
                 }

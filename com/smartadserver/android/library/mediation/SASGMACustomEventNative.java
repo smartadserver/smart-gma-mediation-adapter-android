@@ -7,13 +7,15 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.formats.MediaView;
 import com.google.android.gms.ads.formats.NativeAd;
 import com.google.android.gms.ads.formats.NativeAdOptions;
 import com.google.android.gms.ads.mediation.NativeAppInstallAdMapper;
@@ -35,6 +37,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -91,14 +95,6 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
                     // convert Smart native ad to a Google UnifiedNativeAd
                     processUnifiedNativeAdRequest(nativeAdElement, customEventNativeListener, nativeMediationAdRequest, context);
 
-                } else if (nativeMediationAdRequest.isContentAdRequested()) {
-                    // convert Smart native ad to a Google NativeContentAd
-                    processContentNativeAdRequest(nativeAdElement, customEventNativeListener, nativeMediationAdRequest, context);
-
-                } else if (nativeMediationAdRequest.isAppInstallAdRequested()) {
-                    // convert Smart native ad to a Google NativeAppInstallAd
-                    processAppInstallAdRequest(nativeAdElement, customEventNativeListener, nativeMediationAdRequest, context);
-
                 } else {
                     // notify Google of a NO fill, as the ad received is not compatible
                     handler.post(new Runnable() {
@@ -148,174 +144,6 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
     }
 
     /**
-     * Creates a {@link NativeContentAdMapper} for the Smart native ad and pass it to Google SDK
-     */
-    private void processContentNativeAdRequest(final SASNativeAdElement nativeAdElement,
-                                               final CustomEventNativeListener customEventNativeListener,
-                                               NativeMediationAdRequest nativeMediationAdRequest,
-                                               final Context context) {
-        // instantiate a NativeAppInstallAdMapper to map properties from the SASNativeAdElement
-        // to the google native ad
-        final NativeContentAdMapper nativeAdMapper = new NativeContentAdMapper() {
-            @Override
-            public void trackViews(View view, Map<String, View> map, Map<String, View> map1) {
-                                    /* trying to get only clickable view te refine click behavior doesn't work as expected :
-                                       the only clickable View passed is the ad choices view, whereas we expect the call to action button...*/
-//                                    Collection<View> clickableViews = map.values();
-//                                    if (clickableViews.size() > 0) {
-//                                        nativeAdElement.registerView(view,clickableViews.toArray(new View[0]));
-//                                    } else {
-//                                        nativeAdElement.registerView(view);
-//                                    }
-
-                // ... so register the whole view
-                nativeAdElement.registerView(view);
-            }
-
-            @Override
-            public void untrackView(View view) {
-                nativeAdElement.unregisterView(view);
-            }
-
-        };
-
-        nativeAdMapper.setOverrideClickHandling(true);
-        nativeAdMapper.setHeadline(nativeAdElement.getTitle());
-        nativeAdMapper.setBody(nativeAdElement.getBody());
-        nativeAdMapper.setCallToAction(nativeAdElement.getCalltoAction());
-        nativeAdMapper.setAdvertiser("Smart AdServer");
-
-        // Set native ad icon if available
-        if (nativeAdElement.getIcon() != null) {
-            NativeAd.Image icon = getNativeAdImage(nativeAdElement.getIcon(), nativeMediationAdRequest);
-            nativeAdMapper.setLogo(icon);
-        }
-
-        // set native ad cover if available
-        if (nativeAdElement.getCoverImage() != null) {
-            ArrayList<NativeAd.Image> imageList = new ArrayList<>();
-            imageList.add(getNativeAdImage(nativeAdElement.getCoverImage(), nativeMediationAdRequest));
-            nativeAdMapper.setImages(imageList);
-        }
-
-        // add an ad choices view
-        SASAdChoicesView adChoicesView = new SASAdChoicesView(context);
-        int size = SASUtil.getDimensionInPixels(20, adChoicesView.getResources());
-        adChoicesView.setLayoutParams(new ViewGroup.LayoutParams(size, size));
-        adChoicesView.setNativeAdElement(nativeAdElement);
-        FrameLayout frameLayout = new FrameLayout(context);
-        frameLayout.addView(adChoicesView);
-        nativeAdMapper.setAdChoicesContent(frameLayout);
-
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-
-                // set the MediaView from Smart SDK, if any (NOT WORKING AS IT SEEMS)
-                if (nativeAdElement.getMediaElement() != null) {
-                    SASNativeAdMediaView mediaView = new SASNativeAdMediaView(context);
-                    mediaView.setNativeAdElement(nativeAdElement);
-                    mediaView.setBackgroundColor(Color.RED);
-
-                    mediaView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                    mediaView.setEnforceAspectRatio(true);
-
-                    nativeAdMapper.setMediaView(mediaView);
-                    nativeAdMapper.setHasVideoContent(true);
-                }
-
-                // notify Google tha a native ad was loaded
-                customEventNativeListener.onAdLoaded(nativeAdMapper);
-            }
-        });
-    }
-
-    /**
-     * Creates a {@link NativeContentAdMapper} for the Smart native ad and pass it to Google SDK
-     */
-    private void processAppInstallAdRequest(final SASNativeAdElement nativeAdElement,
-                                            final CustomEventNativeListener customEventNativeListener,
-                                            NativeMediationAdRequest nativeMediationAdRequest,
-                                            final Context context) {
-        // instantiate a NativeAppInstallAdMapper to map properties from the SASNativeAdElement
-        // to the google native ad
-        final NativeAppInstallAdMapper nativeAdMapper = new NativeAppInstallAdMapper() {
-            @Override
-            public void trackViews(View view, Map<String, View> map, Map<String, View> map1) {
-                                    /* trying to get only clickable view te refine click behavior doesn't work as expected :
-                                       the only clickable View passed is the ad choices view, whereas we expect the call to action button...*/
-//                                    Collection<View> clickableViews = map.values();
-//                                    if (clickableViews.size() > 0) {
-//                                        nativeAdElement.registerView(view,clickableViews.toArray(new View[0]));
-//                                    } else {
-//                                        nativeAdElement.registerView(view);
-//                                    }
-
-                // ... so register the whole view
-                nativeAdElement.registerView(view);
-            }
-
-            @Override
-            public void untrackView(View view) {
-                nativeAdElement.unregisterView(view);
-            }
-
-        };
-
-        nativeAdMapper.setOverrideClickHandling(true);
-        nativeAdMapper.setHeadline(nativeAdElement.getTitle());
-        nativeAdMapper.setBody(nativeAdElement.getBody());
-        nativeAdMapper.setCallToAction(nativeAdElement.getCalltoAction());
-
-        // Set native ad icon if available
-        if (nativeAdElement.getIcon() != null) {
-            NativeAd.Image icon = getNativeAdImage(nativeAdElement.getIcon(), nativeMediationAdRequest);
-            nativeAdMapper.setIcon(icon);
-        }
-
-        // set native ad cover if available
-        if (nativeAdElement.getCoverImage() != null) {
-            ArrayList<NativeAd.Image> imageList = new ArrayList<>();
-            imageList.add(getNativeAdImage(nativeAdElement.getCoverImage(), nativeMediationAdRequest));
-            nativeAdMapper.setImages(imageList);
-        }
-
-        // set star rating
-        nativeAdMapper.setStarRating((double) nativeAdElement.getRating());
-
-        // add an ad choices view
-        SASAdChoicesView adChoicesView = new SASAdChoicesView(context);
-        int size = SASUtil.getDimensionInPixels(20, adChoicesView.getResources());
-        adChoicesView.setLayoutParams(new ViewGroup.LayoutParams(size, size));
-        adChoicesView.setNativeAdElement(nativeAdElement);
-        FrameLayout frameLayout = new FrameLayout(context);
-        frameLayout.addView(adChoicesView);
-        nativeAdMapper.setAdChoicesContent(frameLayout);
-
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-
-                // set the MediaView from Smart SDK, if any (NOT WORKING AS IT SEEMS)
-                if (nativeAdElement.getMediaElement() != null) {
-                    SASNativeAdMediaView mediaView = new SASNativeAdMediaView(context);
-                    mediaView.setNativeAdElement(nativeAdElement);
-                    mediaView.setBackgroundColor(Color.RED);
-
-                    mediaView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                    mediaView.setEnforceAspectRatio(true);
-
-                    nativeAdMapper.setMediaView(mediaView);
-                    nativeAdMapper.setHasVideoContent(true);
-                }
-
-                // notify Google tha a native ad was loaded
-                customEventNativeListener.onAdLoaded(nativeAdMapper);
-            }
-        });
-    }
-
-    /**
      * Creates a {@link UnifiedNativeAdMapper} for the Smart native ad and pass it to Google SDK
      */
     private void processUnifiedNativeAdRequest(final SASNativeAdElement nativeAdElement,
@@ -328,17 +156,24 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
         final UnifiedNativeAdMapper nativeAdMapper = new UnifiedNativeAdMapper() {
             @Override
             public void trackViews(View view, Map<String, View> map, Map<String, View> map1) {
-                                    /* trying to get only clickable view te refine click behavior doesn't work as expected :
-                                       the only clickable View passed is the ad choices view, whereas we expect the call to action button...*/
-//                                    Collection<View> clickableViews = map.values();
-//                                    if (clickableViews.size() > 0) {
-//                                        nativeAdElement.registerView(view,clickableViews.toArray(new View[0]));
-//                                    } else {
-//                                        nativeAdElement.registerView(view);
-//                                    }
 
-                // ... so register the whole view
-                nativeAdElement.registerView(view);
+                // If there is a video, we need to filter out any MediaView from the list of clickable views, as we want to
+                // preserve the click to expand behaviour of the Smart native media view
+                Iterator<View> clickableViewsIterator = map.values().iterator();
+                while (clickableViewsIterator.hasNext()) {
+                    View v = clickableViewsIterator.next();
+                    if (v instanceof MediaView && hasVideoContent()) {
+                        clickableViewsIterator.remove();
+                    }
+                }
+
+                if (map.values().size() > 0) {
+                    // register the root view with only specified clickable views (minus any google MediaView)
+                    nativeAdElement.registerView(view,map.values().toArray(new View[0]));
+                } else {
+                    // register the whole root view as clickable
+                    nativeAdElement.registerView(view);
+                }
             }
 
             @Override
@@ -350,7 +185,6 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
         nativeAdMapper.setHeadline(nativeAdElement.getTitle());
         nativeAdMapper.setBody(nativeAdElement.getBody());
         nativeAdMapper.setCallToAction(nativeAdElement.getCalltoAction());
-        nativeAdMapper.setAdvertiser("Smart AdServer");
 
         // Set native ad icon if available
         if (nativeAdElement.getIcon() != null) {
