@@ -3,6 +3,10 @@ package com.smartadserver.android.library.mediation;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.mediation.MediationAdRequest;
@@ -19,7 +23,7 @@ import com.smartadserver.android.library.util.SASUtil;
 /**
  * Class that handles an adMob mediation interstitial ad call to Smart AdServer SDK.
  */
-public class SASGMACustomEventInterstitial extends SASGMACustomEventBase implements CustomEventInterstitial {
+public class SASGMACustomEventInterstitial implements CustomEventInterstitial {
 
     // Smart interstitial manager that will handle the mediation ad call
     private SASInterstitialManager interstitialManager;
@@ -29,9 +33,13 @@ public class SASGMACustomEventInterstitial extends SASGMACustomEventBase impleme
      * Delegates the interstitial ad call to Smart AdServer SDK
      */
     @Override
-    public void requestInterstitialAd(Context context, final CustomEventInterstitialListener customEventInterstitialListener,
-                                      String s, MediationAdRequest mediationAdRequest, Bundle bundle) {
+    public void requestInterstitialAd(@NonNull Context context,
+                                      final @NonNull CustomEventInterstitialListener customEventInterstitialListener,
+                                      @Nullable String s,
+                                      @NonNull MediationAdRequest mediationAdRequest,
+                                      @Nullable Bundle bundle) {
 
+        Log.d("CustomEventInterstitial", "requestInterstitialAd for SASGMACustomEventInterstitial");
 
         // get the smart placement object
         if (s == null) {
@@ -39,7 +47,7 @@ public class SASGMACustomEventInterstitial extends SASGMACustomEventBase impleme
         }
 
         // Configure the Smart Display SDK and retrieve the ad placement.
-        SASAdPlacement adPlacement = configureSDKAndGetAdPlacement(context, s, mediationAdRequest);
+        SASAdPlacement adPlacement = SASGMACustomEventUtil.configureSDKAndGetAdPlacement(context, s, bundle);
 
         if (adPlacement == null) {
             // incorrect smart placement : exit in error
@@ -62,7 +70,7 @@ public class SASGMACustomEventInterstitial extends SASGMACustomEventBase impleme
             Handler handler = SASUtil.getMainLooperHandler();
 
             @Override
-            public void onInterstitialAdLoaded(SASInterstitialManager sasInterstitialManager, SASAdElement sasAdElement) {
+            public void onInterstitialAdLoaded(@NonNull SASInterstitialManager sasInterstitialManager, @NonNull SASAdElement sasAdElement) {
                 // Smart interstitial ad was successfully loaded
                 handler.post(new Runnable() {
                     @Override
@@ -73,7 +81,7 @@ public class SASGMACustomEventInterstitial extends SASGMACustomEventBase impleme
             }
 
             @Override
-            public void onInterstitialAdFailedToLoad(SASInterstitialManager sasInterstitialManager, final Exception e) {
+            public void onInterstitialAdFailedToLoad(@NonNull SASInterstitialManager sasInterstitialManager, @NonNull final Exception e) {
                 // Smart interstitial ad failed to load
                 handler.post(new Runnable() {
                     @Override
@@ -92,7 +100,7 @@ public class SASGMACustomEventInterstitial extends SASGMACustomEventBase impleme
             }
 
             @Override
-            public void onInterstitialAdShown(SASInterstitialManager sasInterstitialManager) {
+            public void onInterstitialAdShown(@NonNull SASInterstitialManager sasInterstitialManager) {
                 // Smart interstitial ad was displayed (full screen)
                 handler.post(new Runnable() {
                     @Override
@@ -103,12 +111,12 @@ public class SASGMACustomEventInterstitial extends SASGMACustomEventBase impleme
             }
 
             @Override
-            public void onInterstitialAdFailedToShow(SASInterstitialManager sasInterstitialManager, Exception e) {
+            public void onInterstitialAdFailedToShow(@NonNull SASInterstitialManager sasInterstitialManager, @NonNull Exception e) {
                 // no dfp counterpart to call
             }
 
             @Override
-            public void onInterstitialAdClicked(SASInterstitialManager sasInterstitialManager) {
+            public void onInterstitialAdClicked(@NonNull SASInterstitialManager sasInterstitialManager) {
                 // Smart interstitial ad was clicked
                 handler.post(new Runnable() {
                     @Override
@@ -119,7 +127,7 @@ public class SASGMACustomEventInterstitial extends SASGMACustomEventBase impleme
             }
 
             @Override
-            public void onInterstitialAdDismissed(SASInterstitialManager sasInterstitialManager) {
+            public void onInterstitialAdDismissed(@NonNull SASInterstitialManager sasInterstitialManager) {
                 // Smart interstitial ad was closed
                 handler.post(new Runnable() {
                     @Override
@@ -130,7 +138,7 @@ public class SASGMACustomEventInterstitial extends SASGMACustomEventBase impleme
             }
 
             @Override
-            public void onInterstitialAdVideoEvent(SASInterstitialManager sasInterstitialManager, int i) {
+            public void onInterstitialAdVideoEvent(@NonNull SASInterstitialManager sasInterstitialManager, int i) {
                 // nothing to do here
             }
         });

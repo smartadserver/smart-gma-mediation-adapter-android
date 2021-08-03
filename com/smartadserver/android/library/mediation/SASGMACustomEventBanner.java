@@ -3,7 +3,11 @@ package com.smartadserver.android.library.mediation;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.ViewGroup;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdSize;
@@ -20,7 +24,7 @@ import com.smartadserver.android.library.util.SASUtil;
 /**
  * Class that handles an adMob mediation banner ad call to Smart AdServer SDK.
  */
-public class SASGMACustomEventBanner extends SASGMACustomEventBase implements CustomEventBanner {
+public class SASGMACustomEventBanner implements CustomEventBanner {
 
     // Smart banner view that will handle the mediation ad call
     private SASBannerView sasBannerView;
@@ -30,8 +34,14 @@ public class SASGMACustomEventBanner extends SASGMACustomEventBase implements Cu
      * Delegates the banner ad call to Smart AdServer SDK
      */
     @Override
-    public void requestBannerAd(final Context context, final CustomEventBannerListener customEventBannerListener,
-                                String s, final AdSize adSize, MediationAdRequest mediationAdRequest, Bundle bundle) {
+    public void requestBannerAd(@NonNull final Context context,
+                                @NonNull final CustomEventBannerListener customEventBannerListener,
+                                @Nullable String s,
+                                @NonNull final AdSize adSize,
+                                @NonNull MediationAdRequest mediationAdRequest,
+                                @Nullable Bundle bundle) {
+
+        Log.d("CustomEventBanner", "requestInterstitialAd for SASGMACustomEventBanner");
 
         // get the smart placement object
         if (s == null) {
@@ -39,7 +49,7 @@ public class SASGMACustomEventBanner extends SASGMACustomEventBase implements Cu
         }
 
         // Configure the Smart Display SDK and retrieve the ad placement.
-        SASAdPlacement adPlacement = configureSDKAndGetAdPlacement(context, s, mediationAdRequest);
+        SASAdPlacement adPlacement = SASGMACustomEventUtil.configureSDKAndGetAdPlacement(context, s, bundle);
 
         // test if the ad placement is valid
         if (adPlacement == null) {
@@ -60,7 +70,7 @@ public class SASGMACustomEventBanner extends SASGMACustomEventBase implements Cu
              * @param params
              */
             @Override
-            public void setLayoutParams(ViewGroup.LayoutParams params) {
+            public void setLayoutParams(@NonNull ViewGroup.LayoutParams params) {
                 if (!sasBannerView.isExpanded()) {
                     params.height = adSize.getHeightInPixels(context);
                     params.width = adSize.getWidthInPixels(context);
@@ -76,7 +86,7 @@ public class SASGMACustomEventBanner extends SASGMACustomEventBase implements Cu
             Handler handler = SASUtil.getMainLooperHandler();
 
             @Override
-            public void onBannerAdLoaded(SASBannerView bannerView, SASAdElement sasAdElement) {
+            public void onBannerAdLoaded(@NonNull SASBannerView bannerView, @NonNull SASAdElement sasAdElement) {
                 // Smart banner ad was successfully loaded
                 handler.post(new Runnable() {
                     @Override
@@ -87,7 +97,7 @@ public class SASGMACustomEventBanner extends SASGMACustomEventBase implements Cu
             }
 
             @Override
-            public void onBannerAdFailedToLoad(SASBannerView sasBannerView, final Exception e) {
+            public void onBannerAdFailedToLoad(@NonNull SASBannerView sasBannerView, @NonNull final Exception e) {
                 // Smart banner ad failed to load
                 handler.post(new Runnable() {
                     @Override
@@ -106,7 +116,7 @@ public class SASGMACustomEventBanner extends SASGMACustomEventBase implements Cu
             }
 
             @Override
-            public void onBannerAdClicked(SASBannerView sasBannerView) {
+            public void onBannerAdClicked(@NonNull SASBannerView sasBannerView) {
                 // Smart banner ad was clicked
                 handler.post(new Runnable() {
                     @Override
@@ -117,7 +127,7 @@ public class SASGMACustomEventBanner extends SASGMACustomEventBase implements Cu
             }
 
             @Override
-            public void onBannerAdExpanded(SASBannerView sasBannerView) {
+            public void onBannerAdExpanded(@NonNull SASBannerView sasBannerView) {
                 // Smart banner ad was displayed full screen
                 handler.post(new Runnable() {
                     @Override
@@ -128,7 +138,7 @@ public class SASGMACustomEventBanner extends SASGMACustomEventBase implements Cu
             }
 
             @Override
-            public void onBannerAdCollapsed(SASBannerView sasBannerView) {
+            public void onBannerAdCollapsed(@NonNull SASBannerView sasBannerView) {
                 // Smart banner ad was restored to its default state
                 handler.post(new Runnable() {
                     @Override
@@ -139,17 +149,17 @@ public class SASGMACustomEventBanner extends SASGMACustomEventBase implements Cu
             }
 
             @Override
-            public void onBannerAdResized(SASBannerView sasBannerView) {
+            public void onBannerAdResized(@NonNull SASBannerView sasBannerView) {
                 // nothing to do here
             }
 
             @Override
-            public void onBannerAdClosed(SASBannerView sasBannerView) {
+            public void onBannerAdClosed(@NonNull SASBannerView sasBannerView) {
                 // nothing to do here
             }
 
             @Override
-            public void onBannerAdVideoEvent(SASBannerView sasBannerView, int i) {
+            public void onBannerAdVideoEvent(@NonNull SASBannerView sasBannerView, int i) {
                 // nothing to do here
             }
         });

@@ -18,8 +18,6 @@ import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.formats.MediaView;
 import com.google.android.gms.ads.formats.NativeAd;
 import com.google.android.gms.ads.formats.NativeAdOptions;
-import com.google.android.gms.ads.mediation.NativeAppInstallAdMapper;
-import com.google.android.gms.ads.mediation.NativeContentAdMapper;
 import com.google.android.gms.ads.mediation.NativeMediationAdRequest;
 import com.google.android.gms.ads.mediation.UnifiedNativeAdMapper;
 import com.google.android.gms.ads.mediation.customevent.CustomEventNative;
@@ -37,14 +35,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
 /**
  * Class that handles an adMob mediation banner ad call to Smart AdServer SDK.
  */
-public class SASGMACustomEventNative extends SASGMACustomEventBase implements CustomEventNative {
+public class SASGMACustomEventNative implements CustomEventNative {
 
     // the Smart native ad manager that will handle the mediation ad call
     private SASNativeAdManager sasNativeAdManager;
@@ -58,8 +55,10 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
      * Delegates the native ad call to the Smart AdServer SDK
      */
     @Override
-    public void requestNativeAd(final Context context, final CustomEventNativeListener customEventNativeListener, String s,
-                                final NativeMediationAdRequest nativeMediationAdRequest, Bundle bundle) {
+    public void requestNativeAd(final @NonNull Context context,
+                                final @NonNull CustomEventNativeListener customEventNativeListener,
+                                @Nullable String s, final @NonNull NativeMediationAdRequest nativeMediationAdRequest,
+                                @Nullable Bundle bundle) {
 
         // get the smart placement object
         if (s == null) {
@@ -67,7 +66,7 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
         }
 
         // Configure the Smart Display SDK and retrieve the ad placement.
-        SASAdPlacement adPlacement = configureSDKAndGetAdPlacement(context, s, nativeMediationAdRequest);
+        SASAdPlacement adPlacement = SASGMACustomEventUtil.configureSDKAndGetAdPlacement(context, s, bundle);
 
         // test if the ad placement is valid
         if (adPlacement == null) {
@@ -89,7 +88,7 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
 
 
             @Override
-            public void onNativeAdLoaded(final SASNativeAdElement nativeAdElement) {
+            public void onNativeAdLoaded(@NonNull final SASNativeAdElement nativeAdElement) {
 
                 if (nativeMediationAdRequest.isUnifiedNativeAdRequested()) {
                     // convert Smart native ad to a Google UnifiedNativeAd
@@ -110,7 +109,7 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
                 nativeAdElement.setClickHandler(new SASNativeAdElement.ClickHandler() {
 
                     @Override
-                    public boolean handleClick(String clickUrl, SASNativeAdElement nativeAdElement) {
+                    public boolean handleClick(String clickUrl, @NonNull SASNativeAdElement nativeAdElement) {
                         customEventNativeListener.onAdClicked();
                         customEventNativeListener.onAdOpened();
                         customEventNativeListener.onAdLeftApplication();
@@ -120,7 +119,7 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
             }
 
             @Override
-            public void onNativeAdFailedToLoad(final Exception e) {
+            public void onNativeAdFailedToLoad(@NonNull final Exception e) {
 
                 handler.post(new Runnable() {
                     @Override
@@ -155,7 +154,7 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
         // to the google native ad
         final UnifiedNativeAdMapper nativeAdMapper = new UnifiedNativeAdMapper() {
             @Override
-            public void trackViews(View view, Map<String, View> map, Map<String, View> map1) {
+            public void trackViews(@NonNull View view, Map<String, View> map, @NonNull Map<String, View> map1) {
 
                 // If there is a video, we need to filter out any MediaView from the list of clickable views, as we want to
                 // preserve the click to expand behaviour of the Smart native media view
@@ -177,7 +176,7 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
             }
 
             @Override
-            public void untrackView(View view) {
+            public void untrackView(@NonNull View view) {
                 nativeAdElement.unregisterView(view);
             }
         };
@@ -268,11 +267,13 @@ public class SASGMACustomEventNative extends SASGMACustomEventBase implements Cu
         final Drawable drawable = imageDrawable;
 
         NativeAd.Image nativeAdImage = new NativeAd.Image() {
+            @NonNull
             @Override
             public Drawable getDrawable() {
                 return drawable;
             }
 
+            @NonNull
             @Override
             public Uri getUri() {
                 return Uri.parse(imageUrl);

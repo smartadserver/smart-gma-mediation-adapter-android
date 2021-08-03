@@ -3,14 +3,20 @@ package com.smartadserver.android.library.mediation;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.view.ViewGroup;
 
-import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.mediation.MediationAdRequest;
-import com.google.android.gms.ads.reward.RewardItem;
-import com.google.android.gms.ads.reward.mediation.MediationRewardedVideoAdAdapter;
-import com.google.android.gms.ads.reward.mediation.MediationRewardedVideoAdListener;
+import androidx.annotation.NonNull;
+
+import com.google.android.gms.ads.AdError;
+import com.google.android.gms.ads.mediation.Adapter;
+import com.google.android.gms.ads.mediation.InitializationCompleteCallback;
+import com.google.android.gms.ads.mediation.MediationAdLoadCallback;
+import com.google.android.gms.ads.mediation.MediationConfiguration;
+import com.google.android.gms.ads.mediation.MediationRewardedAd;
+import com.google.android.gms.ads.mediation.MediationRewardedAdCallback;
+import com.google.android.gms.ads.mediation.MediationRewardedAdConfiguration;
+import com.google.android.gms.ads.mediation.VersionInfo;
+import com.google.android.gms.ads.rewarded.RewardItem;
 import com.smartadserver.android.library.exception.SASAdTimeoutException;
 import com.smartadserver.android.library.exception.SASNoAdToDeliverException;
 import com.smartadserver.android.library.model.SASAdElement;
@@ -18,31 +24,53 @@ import com.smartadserver.android.library.model.SASAdPlacement;
 import com.smartadserver.android.library.model.SASReward;
 import com.smartadserver.android.library.rewarded.SASRewardedVideoManager;
 import com.smartadserver.android.library.ui.SASAdView;
-import com.smartadserver.android.library.ui.SASInterstitialManager;
+import com.smartadserver.android.library.util.SASLibraryInfo;
 import com.smartadserver.android.library.util.SASUtil;
 
-public class SASGMAMediationRewardedVideoAdAdapter extends SASGMACustomEventBase implements MediationRewardedVideoAdAdapter {
+import java.lang.ref.WeakReference;
+import java.util.List;
 
-    MediationRewardedVideoAdListener mediationRewardedVideoAdListener;
-    Context context;
+public class SASGMAMediationRewardedVideoAdAdapter extends Adapter implements MediationRewardedAd {
+
+    private static WeakReference<Context> applicationContextWeakReference;
     boolean isInitialized = false;
 
     // Smart rewarded video manager that will handle the mediation ad call
     private SASRewardedVideoManager rewardedVideoManager;
 
+    // callback instance from Google SDK in case of rewarded ad loading success
+    MediationRewardedAdCallback mediationRewardedAdCallback = null;
+
     @Override
-    public void initialize(Context context, MediationAdRequest mediationAdRequest, String s, MediationRewardedVideoAdListener mediationRewardedVideoAdListener, Bundle bundle, Bundle bundle1) {
-        this.mediationRewardedVideoAdListener = mediationRewardedVideoAdListener;
-        this.context = context;
+    public void initialize(@NonNull Context context,
+                           @NonNull InitializationCompleteCallback initializationCompleteCallback,
+                           @NonNull List<MediationConfiguration> list) {
+
+        this.applicationContextWeakReference = new WeakReference(context.getApplicationContext());
         isInitialized = true;
-        // Nothing more do here, Smart rewarded videos does not require initialization
-        mediationRewardedVideoAdListener.onInitializationSucceeded(this);
+
+        // Nothing more to do here, Smart rewarded videos does not require initialization
+        initializationCompleteCallback.onInitializationSucceeded();
+    }
+
+    @NonNull
+    @Override
+    public VersionInfo getVersionInfo() {
+        return SASGMACustomEventUtil.getVersionInfo();
+    }
+
+    @NonNull
+    @Override
+    public VersionInfo getSDKVersionInfo() {
+        return SASGMACustomEventUtil.getSDKVersionInfo();
     }
 
     @Override
-    public void loadAd(MediationAdRequest mediationAdRequest, Bundle bundle, Bundle bundle1) {
+    public void loadRewardedAd(@NonNull MediationRewardedAdConfiguration mediationRewardedAdConfiguration,
+                               @NonNull final MediationAdLoadCallback<MediationRewardedAd, MediationRewardedAdCallback> mediationAdLoadCallback) {
 
-        String smartParameters = bundle.getString("parameter");
+
+        String smartParameters = mediationRewardedAdConfiguration.getServerParameters().getString("parameter");
 
         // get the smart placement object
         if (smartParameters == null) {
@@ -50,11 +78,18 @@ public class SASGMAMediationRewardedVideoAdAdapter extends SASGMACustomEventBase
         }
 
         // Configure the Smart Display SDK and retrieve the ad placement.
-        SASAdPlacement adPlacement = configureSDKAndGetAdPlacement(context, smartParameters, mediationAdRequest);
+
+        SASAdPlacement adPlacement = null;
+        Context context = applicationContextWeakReference.get();
+        if (context != null) {
+            adPlacement = SASGMACustomEventUtil.configureSDKAndGetAdPlacement(context,
+                    smartParameters, mediationRewardedAdConfiguration.getMediationExtras());
+        }
 
         if (adPlacement == null) {
             // incorrect smart placement : exit in error
-            mediationRewardedVideoAdListener.onAdFailedToLoad(this, AdRequest.ERROR_CODE_INVALID_REQUEST);
+            mediationAdLoadCallback.onFailure(
+                    createAdError("Invalid Smart placement IDs. Please check server parameters string"));
             return;
         }
 
@@ -77,123 +112,140 @@ public class SASGMAMediationRewardedVideoAdAdapter extends SASGMACustomEventBase
             Handler handler = SASUtil.getMainLooperHandler();
 
             @Override
-            public void onRewardedVideoAdLoaded(SASRewardedVideoManager sasRewardedVideoManager, SASAdElement sasAdElement) {
+            public void onRewardedVideoAdLoaded(@NonNull SASRewardedVideoManager sasRewardedVideoManager, @NonNull SASAdElement sasAdElement) {
                 // Smart rewarded video ad was successfully loaded
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        mediationRewardedVideoAdListener.onAdLoaded(SASGMAMediationRewardedVideoAdAdapter.this);
+                        synchronized (SASGMAMediationRewardedVideoAdAdapter.this) {
+                            mediationRewardedAdCallback = mediationAdLoadCallback.onSuccess(SASGMAMediationRewardedVideoAdAdapter.this);
+                        }
                     }
                 });
             }
 
             @Override
-            public void onRewardedVideoAdFailedToLoad(SASRewardedVideoManager sasRewardedVideoManager, final Exception e) {
+            public void onRewardedVideoAdFailedToLoad(@NonNull SASRewardedVideoManager sasRewardedVideoManager, @NonNull final Exception e) {
                 // Smart rewarded video ad failed to load
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        int errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR;
+                        String errorMessage = "Smart internal error";
                         if (e instanceof SASNoAdToDeliverException) {
                             // no ad to deliver
-                            errorCode = AdRequest.ERROR_CODE_NO_FILL;
+                            errorMessage = "No fill";
                         } else if (e instanceof SASAdTimeoutException) {
                             // ad request timeout translates to admob network error
-                            errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR;
+                            errorMessage = "Smart ad request did not complete before timemout";
                         }
-                        mediationRewardedVideoAdListener.onAdFailedToLoad(SASGMAMediationRewardedVideoAdAdapter.this, errorCode);
+                        mediationAdLoadCallback.onFailure(createAdError(errorMessage));
                     }
                 });
             }
 
             @Override
-            public void onRewardedVideoAdShown(SASRewardedVideoManager sasRewardedVideoManager) {
+            public synchronized void onRewardedVideoAdShown(@NonNull SASRewardedVideoManager sasRewardedVideoManager) {
+                // TODO : check main thread ?
                 // no GMA method to call
+                if (mediationRewardedAdCallback != null) {
+                    mediationRewardedAdCallback.onAdOpened();
+                    mediationRewardedAdCallback.onVideoStart();
+                    mediationRewardedAdCallback.reportAdImpression();
+                }
             }
 
             @Override
-            public void onRewardedVideoAdFailedToShow(SASRewardedVideoManager sasRewardedVideoManager, Exception e) {
-                // no GMA method to call
+            public synchronized void onRewardedVideoAdFailedToShow(@NonNull SASRewardedVideoManager sasRewardedVideoManager, @NonNull Exception e) {
+                // TODO : check main thread ?
+                if (mediationRewardedAdCallback != null) {
+                    mediationRewardedAdCallback.onAdFailedToShow(createAdError(e.getMessage()));
+                }
             }
 
             @Override
-            public void onRewardedVideoAdClosed(SASRewardedVideoManager sasRewardedVideoManager) {
+            public void onRewardedVideoAdClosed(@NonNull SASRewardedVideoManager sasRewardedVideoManager) {
+
                 // Smart rewarded video ad was closed
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        mediationRewardedVideoAdListener.onAdClosed(SASGMAMediationRewardedVideoAdAdapter.this);
+                        synchronized (SASGMAMediationRewardedVideoAdAdapter.this) {
+                            if (mediationRewardedAdCallback != null) {
+                                mediationRewardedAdCallback.onAdClosed();
+                            }
+                        }
                     }
                 });
             }
 
             @Override
-            public void onRewardReceived(SASRewardedVideoManager sasRewardedVideoManager, final SASReward sasReward) {
+            public void onRewardReceived(@NonNull SASRewardedVideoManager sasRewardedVideoManager, @NonNull final SASReward sasReward) {
                 // Smart reward was granted
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
 
-                        RewardItem rewardItem = new RewardItem() {
+                        synchronized (SASGMAMediationRewardedVideoAdAdapter.this) {
+                            if (mediationRewardedAdCallback != null) {
+                                mediationRewardedAdCallback.onUserEarnedReward(new RewardItem() {
+                                    @NonNull
+                                    @Override
+                                    public String getType() {
+                                        return sasReward.getCurrency();
+                                    }
 
-                            String currency = sasReward.getCurrency();
-                            double amount = sasReward.getAmount();
-
-                            @Override
-                            public String getType() {
-                                return currency;
+                                    @Override
+                                    public int getAmount() {
+                                        return (int)sasReward.getAmount();
+                                    }
+                                });
                             }
-
-                            @Override
-                            public int getAmount() {
-                                return (int) amount;
-                            }
-                        };
-                        mediationRewardedVideoAdListener.onRewarded(SASGMAMediationRewardedVideoAdAdapter.this, rewardItem);
+                        }
                     }
                 });
             }
 
             @Override
-            public void onRewardedVideoAdClicked(SASRewardedVideoManager sasRewardedVideoManager) {
+            public void onRewardedVideoAdClicked(@NonNull SASRewardedVideoManager sasRewardedVideoManager) {
                 // Smart rewarded video ad was clicked
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        mediationRewardedVideoAdListener.onAdClicked(SASGMAMediationRewardedVideoAdAdapter.this);
+                        synchronized (SASGMAMediationRewardedVideoAdAdapter.this) {
+                            if (mediationRewardedAdCallback != null) {
+                                mediationRewardedAdCallback.reportAdClicked();
+                            }
+                        }
                     }
                 });
             }
 
             @Override
-            public void onRewardedVideoEvent(SASRewardedVideoManager sasRewardedVideoManager, final int i) {
+            public void onRewardedVideoEvent(@NonNull SASRewardedVideoManager sasRewardedVideoManager, final int i) {
                 // filter video events from Smart rewarded video
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        switch (i) {
-                            case SASAdView.VideoEvents.VIDEO_START:
-                                mediationRewardedVideoAdListener.onVideoStarted(SASGMAMediationRewardedVideoAdAdapter.this);
-                                break;
-                            case SASAdView.VideoEvents.VIDEO_COMPLETE:
-                                mediationRewardedVideoAdListener.onVideoCompleted(SASGMAMediationRewardedVideoAdAdapter.this);
-                                break;
-                        }
+                        synchronized (SASGMAMediationRewardedVideoAdAdapter.this) {
+                            if (mediationRewardedAdCallback != null) {
+                                switch (i) {
+                                    case SASAdView.VideoEvents.VIDEO_START:
+                                        mediationRewardedAdCallback.onVideoStart();
+                                        break;
+                                    case SASAdView.VideoEvents.VIDEO_COMPLETE:
+                                        mediationRewardedAdCallback.onVideoComplete();
+                                        break;
+                                }
 
-                        mediationRewardedVideoAdListener.onAdClicked(SASGMAMediationRewardedVideoAdAdapter.this);
+                            }
+                        }
                     }
                 });
             }
 
             @Override
-            public void onRewardedVideoEndCardDisplayed(SASRewardedVideoManager sasRewardedVideoManager, ViewGroup viewGroup) {
-                // Smart rewarded video ad was clicked
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        mediationRewardedVideoAdListener.onAdOpened(SASGMAMediationRewardedVideoAdAdapter.this);
-                    }
-                });
+            public void onRewardedVideoEndCardDisplayed(@NonNull SASRewardedVideoManager sasRewardedVideoManager, @NonNull ViewGroup viewGroup) {
+                // noting to report
             }
         });
 
@@ -201,33 +253,14 @@ public class SASGMAMediationRewardedVideoAdAdapter extends SASGMACustomEventBase
         rewardedVideoManager.loadRewardedVideo();
     }
 
+    private AdError createAdError(String errorMessage) {
+        return new AdError(-1, errorMessage, AdError.UNDEFINED_DOMAIN);
+    }
+
     @Override
-    public void showVideo() {
+    public void showAd(@NonNull Context context) {
         if (rewardedVideoManager != null && rewardedVideoManager.hasRewardedVideo()) {
             rewardedVideoManager.showRewardedVideo();
         }
-    }
-
-    @Override
-    public boolean isInitialized() {
-        return isInitialized;
-    }
-
-    @Override
-    public void onDestroy() {
-        if (rewardedVideoManager != null) {
-            rewardedVideoManager.onDestroy();
-            rewardedVideoManager = null;
-        }
-    }
-
-    @Override
-    public void onPause() {
-        // not supported by SASRewardedVideoManager
-    }
-
-    @Override
-    public void onResume() {
-        // not supported by SASRewardedVideoManager
     }
 }
