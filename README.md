@@ -34,10 +34,10 @@ Typically, to deliver Smart ads on a Google ad unit, you need to create a custom
 This is done by using either addCustomEventExtrasBundle() or addNetworkExtrasBundle() (depending on the class of the adapter) on the Google AdRequest object.
 For instance, in banner case, if your smart insertion uses "myCustomBannerTargeting" string on any Smart programmed banner insertion :
 
-Bundle mediationExtras = new Bundle();
-mediationExtras.putString(SASGMACustomEventUtil.MEDIATION_EXTRAS_SMART_KEYWORD_TARGETING_KEY, "myCustomBannerTargeting");
-AdRequest adRequest = new AdRequest.Builder().addCustomEventExtrasBundle(SASGMACustomEventBanner.class,mediationExtras).build();
-
+val mediationExtras = Bundle()
+mediationExtras.putString(SASGMACustomEventUtil.MEDIATION_EXTRAS_SMART_KEYWORD_TARGETING_KEY,"myCustomBannerTargeting")
+val adRequest: AdRequest = AdRequest.Builder().addCustomEventExtrasBundle(SASGMACustomEventBanner::class.java, mediationExtras).build()
+            
 This way, Google SDK will pass that bundle to the SASGMACustomEventBanner instance, which in turn will extract the keyword targeting to be passed to the Smart SDK.
 
 For further information, please refer to Google documentation :
