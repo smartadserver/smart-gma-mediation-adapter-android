@@ -14,7 +14,6 @@ import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.formats.MediaView
 import com.google.android.gms.ads.formats.NativeAd
-import com.google.android.gms.ads.formats.NativeAdOptions
 import com.google.android.gms.ads.mediation.NativeMediationAdRequest
 import com.google.android.gms.ads.mediation.UnifiedNativeAdMapper
 import com.google.android.gms.ads.mediation.customevent.CustomEventNative
@@ -160,13 +159,17 @@ class SASGMACustomEventNative : CustomEventNative {
 
         // Set native ad icon if available
         nativeAdElement.icon?.let { imageElement ->
-            nativeAdMapper.icon = getNativeAdImage(imageElement, nativeMediationAdRequest)
+            getNativeAdImage(imageElement, nativeMediationAdRequest)?.let {
+                nativeAdMapper.icon = it
+            }
         }
 
         // set native ad cover if available
         nativeAdElement.coverImage?.let { coverImage ->
-            nativeAdMapper.images = ArrayList<NativeAd.Image?>().apply {
-                add(getNativeAdImage(coverImage, nativeMediationAdRequest))
+            getNativeAdImage(coverImage, nativeMediationAdRequest)?.let {
+                nativeAdMapper.images = ArrayList<NativeAd.Image?>().apply {
+                    add(it)
+                }
             }
         }
 
@@ -248,19 +251,20 @@ class SASGMACustomEventNative : CustomEventNative {
                 }
             }
 
-            // now create google NativeAd image
-            val drawable: Drawable? = imageDrawable
-            return object : NativeAd.Image() {
-                override fun getDrawable(): Drawable {
-                    return (drawable)!!
-                }
+            // now create google NativeAd image if drawable is not null
+            return imageDrawable?.let {
+                object : NativeAd.Image() {
+                    override fun getDrawable(): Drawable {
+                        return (it)
+                    }
 
-                override fun getUri(): Uri {
-                    return Uri.parse(imageUrl)
-                }
+                    override fun getUri(): Uri {
+                        return Uri.parse(imageUrl)
+                    }
 
-                override fun getScale(): Double {
-                    return 1.0
+                    override fun getScale(): Double {
+                        return 1.0
+                    }
                 }
             }
         }
