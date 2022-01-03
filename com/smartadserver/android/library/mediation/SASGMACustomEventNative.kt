@@ -1,7 +1,6 @@
 package com.smartadserver.android.library.mediation
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
@@ -31,8 +30,10 @@ import com.smartadserver.android.library.util.SASUtil
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
-import java.util.*
 import kotlin.collections.ArrayList
+import android.graphics.*
+import android.view.WindowManager
+
 
 /**
  * Class that handles an adMob mediation banner ad call to Smart AdServer SDK.
@@ -159,14 +160,14 @@ class SASGMACustomEventNative : CustomEventNative {
 
         // Set native ad icon if available
         nativeAdElement.icon?.let { imageElement ->
-            getNativeAdImage(imageElement, nativeMediationAdRequest)?.let {
+            getNativeAdImage(context, imageElement, nativeMediationAdRequest)?.let {
                 nativeAdMapper.icon = it
             }
         }
 
         // set native ad cover if available
         nativeAdElement.coverImage?.let { coverImage ->
-            getNativeAdImage(coverImage, nativeMediationAdRequest)?.let {
+            getNativeAdImage(context, coverImage, nativeMediationAdRequest)?.let {
                 nativeAdMapper.images = ArrayList<NativeAd.Image?>().apply {
                     add(it)
                 }
@@ -226,6 +227,41 @@ class SASGMACustomEventNative : CustomEventNative {
     }
 
     companion object {
+
+        /**
+         * Returns optimized inSampleSize based on the given width / height
+         *
+         * @param context
+         * @param width
+         * @param height
+         * @return
+         */
+        private fun calculateInSampleSize(context: Context, width: Int, height: Int): Int {
+            // Get device size
+            val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            val display = windowManager.defaultDisplay
+            val maxSize = Point()
+            display.getSize(maxSize)
+            // Using the device size, we set the max width / height
+            val maxWith: Int = maxSize.x
+            val maxHeight: Int = maxSize.y
+
+            var inSampleSize = 1
+
+            if (height > maxHeight || width > maxWith) {
+                val halfHeight: Int = height / 2
+                val halfWidth: Int = width / 2
+
+                // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+                // height and width larger than the max height and width.
+                while (halfHeight / inSampleSize >= maxHeight && halfWidth / inSampleSize >= maxWith) {
+                    inSampleSize *= 2
+                }
+            }
+
+            return inSampleSize
+        }
+
         /**
          * Returns a Google Mobile Ad NativeAd.Image object from a Smart SASNativeAdElement.ImageElement object
          *
@@ -233,7 +269,7 @@ class SASGMACustomEventNative : CustomEventNative {
          * @param nativeMediationAdRequest
          * @return
          */
-        private fun getNativeAdImage(imageElement: ImageElement, nativeMediationAdRequest: NativeMediationAdRequest): NativeAd.Image? {
+        private fun getNativeAdImage(context: Context, imageElement: ImageElement, nativeMediationAdRequest: NativeMediationAdRequest): NativeAd.Image? {
 
             // should we download images ?
             val downloadImages = nativeMediationAdRequest.getNativeAdOptions()?.shouldReturnUrlsForImageAssets()?.not() ?: true
@@ -246,7 +282,15 @@ class SASGMACustomEventNative : CustomEventNative {
                 // try to retrieve contents at url
                 try {
                     val inputStream: InputStream = URL(imageUrl).content as InputStream
-                    imageDrawable = BitmapDrawable.createFromStream(inputStream, imageUrl)
+
+                    val options: BitmapFactory.Options = BitmapFactory.Options().apply {
+                        // To avoid java.lang.OutOfMemory exceptions with too big bitmap image for the device,
+                        // we calculate the optimised inSampleSize before decoding the bitmap
+                        inSampleSize = calculateInSampleSize(context, imageElement.width, imageElement.height)
+                    }
+
+                    val bitmap: Bitmap = BitmapFactory.decodeStream(inputStream, null, options )
+                    imageDrawable = BitmapDrawable(context.resources, bitmap)
                 } catch (e: IOException) {
                 }
             }
