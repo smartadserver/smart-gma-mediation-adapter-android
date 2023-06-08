@@ -289,8 +289,8 @@ class SASGMACustomEventNative : CustomEventNative {
                         inSampleSize = calculateInSampleSize(context, imageElement.width, imageElement.height)
                     }
 
-                    val bitmap: Bitmap = BitmapFactory.decodeStream(inputStream, null, options )
-                    imageDrawable = BitmapDrawable(context.resources, bitmap)
+                    val bitmap: Bitmap? = BitmapFactory.decodeStream(inputStream, null, options )
+                    imageDrawable = bitmap?.let { BitmapDrawable(context.resources, it) }
                 } catch (e: IOException) {
                 }
             }

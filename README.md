@@ -3,7 +3,7 @@ Smart AdServer - Google Mobile Ads SDK Adapter
 
 Introduction
 ------------
-The _Smart Display SDK_ can be used through _Google Mobile Ads_ using the adapter provided in this repository for banners, interstitial and native ads. Those adapters are compatible with the _Smart Display SDK_ v7.0.
+The _Smart Display SDK_ can be used through _Google Mobile Ads_ using the adapter provided in this repository for banners, interstitial and native ads. Those adapters are compatible with the _Smart Display SDK_ v7.21 and Google Mobile Ads v22.1.
 
 Setup
 -----
