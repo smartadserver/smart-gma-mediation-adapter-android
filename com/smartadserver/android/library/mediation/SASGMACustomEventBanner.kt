@@ -18,8 +18,11 @@ import com.smartadserver.android.library.ui.SASBannerView.BannerListener
 import com.smartadserver.android.library.util.SASUtil
 
 /**
- * Class that handles an adMob mediation banner ad call to Smart AdServer SDK.
+ * Class that handles Google Mobile Ads mediation banner ad calls to Smart AdServer SDK.
+ *
+ * @deprecated replaced by com.smartadserver.android.library.mediation.SASGMAMediationBannerAdapter
  */
+@Deprecated(message = "replaced by com.smartadserver.android.library.mediation.SASGMAMediationBannerAdapter")
 class SASGMACustomEventBanner : CustomEventBanner {
     // Smart banner view that will handle the mediation ad call
     private var sasBannerView: SASBannerView? = null
@@ -34,13 +37,13 @@ class SASGMACustomEventBanner : CustomEventBanner {
                                  adSize: AdSize,
                                  mediationAdRequest: MediationAdRequest,
                                  bundle: Bundle?) {
-        Log.d("CustomEventBanner", "requestInterstitialAd for SASGMACustomEventBanner")
+        Log.d("CustomEventBanner", "requestBannerAd for SASGMACustomEventBanner")
 
         // get the smart placement object
         val placementString = s ?: ""
 
         // Configure the Smart Display SDK and retrieve the ad placement.
-        val adPlacement = SASGMACustomEventUtil.configureSDKAndGetAdPlacement(context, placementString, bundle)
+        val adPlacement = SASGMAUtils.configureSDKAndGetAdPlacement(context, placementString, bundle)
 
         // test if the ad placement is valid
         if (adPlacement == null) {
@@ -129,7 +132,7 @@ class SASGMACustomEventBanner : CustomEventBanner {
     }
 
     /**
-     * Implementation of CustomEventInterstitial interface.
+     * Implementation of CustomEventBanner interface.
      * Forwards the onDestroy() call to SASBannerView
      */
     @Synchronized

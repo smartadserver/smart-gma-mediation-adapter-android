@@ -18,8 +18,12 @@ import com.smartadserver.android.library.ui.SASInterstitialManager.InterstitialL
 import com.smartadserver.android.library.util.SASUtil
 
 /**
- * Class that handles an adMob mediation interstitial ad call to Smart AdServer SDK.
+ * Class that handles Google Mobile Ads mediation interstitial ad calls to Smart AdServer SDK.
+ *
+ * @deprecated replaced by com.smartadserver.android.library.mediation.SASGMAMediationInterstitialAdapter
+ *
  */
+@Deprecated(message = "replaced by com.smartadserver.android.library.mediation.SASGMAMediationInterstitialAdapter")
 class SASGMACustomEventInterstitial constructor() : CustomEventInterstitial {
     // Smart interstitial manager that will handle the mediation ad call
     private var interstitialManager: SASInterstitialManager? = null
@@ -39,7 +43,7 @@ class SASGMACustomEventInterstitial constructor() : CustomEventInterstitial {
         val placementString = s ?: ""
 
         // Configure the Smart Display SDK and retrieve the ad placement.
-        val adPlacement: SASAdPlacement? = SASGMACustomEventUtil.configureSDKAndGetAdPlacement(context, placementString, bundle)
+        val adPlacement: SASAdPlacement? = SASGMAUtils.configureSDKAndGetAdPlacement(context, placementString, bundle)
         if (adPlacement == null) {
             // incorrect smart placement : exit in error
             customEventInterstitialListener.onAdFailedToLoad(AdError(AdRequest.ERROR_CODE_INVALID_REQUEST,

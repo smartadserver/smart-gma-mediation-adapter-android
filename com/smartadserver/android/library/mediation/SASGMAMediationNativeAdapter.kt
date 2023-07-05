@@ -1,134 +1,158 @@
 package com.smartadserver.android.library.mediation
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.Point
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
-import android.os.Bundle
 import android.os.Handler
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.FrameLayout
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.formats.MediaView
+import com.google.android.gms.ads.VersionInfo
 import com.google.android.gms.ads.formats.NativeAd
-import com.google.android.gms.ads.mediation.NativeMediationAdRequest
-import com.google.android.gms.ads.mediation.UnifiedNativeAdMapper
-import com.google.android.gms.ads.mediation.customevent.CustomEventNative
-import com.google.android.gms.ads.mediation.customevent.CustomEventNativeListener
+import com.google.android.gms.ads.mediation.*
+import com.google.android.gms.ads.nativead.MediaView
+import com.google.android.gms.ads.nativead.NativeAdOptions
 import com.smartadserver.android.library.exception.SASAdTimeoutException
 import com.smartadserver.android.library.exception.SASNoAdToDeliverException
-import com.smartadserver.android.library.model.SASAdPlacement
 import com.smartadserver.android.library.model.SASNativeAdElement
-import com.smartadserver.android.library.model.SASNativeAdElement.ImageElement
 import com.smartadserver.android.library.model.SASNativeAdManager
-import com.smartadserver.android.library.model.SASNativeAdManager.NativeAdListener
 import com.smartadserver.android.library.ui.SASAdChoicesView
 import com.smartadserver.android.library.ui.SASNativeAdMediaView
 import com.smartadserver.android.library.util.SASUtil
 import java.io.IOException
 import java.io.InputStream
+import java.lang.ref.WeakReference
 import java.net.URL
-import kotlin.collections.ArrayList
-import android.graphics.*
-import android.view.WindowManager
-
 
 /**
  * Class that handles Google Mobile Ads mediation native ad calls to Smart AdServer SDK.
- *
- * @deprecated replaced by com.smartadserver.android.library.mediation.SASGMAMediationNativeAdapter
  */
-@Deprecated(message = "replaced by com.smartadserver.android.library.mediation.SASGMAMediationNativeAdapter")
-class SASGMACustomEventNative : CustomEventNative {
+class SASGMAMediationNativeAdapter : Adapter() {
+
     // the Smart native ad manager that will handle the mediation ad call
     private var sasNativeAdManager: SASNativeAdManager? = null
 
     // get a Handler on the main thread to execute code on this thread
     private val handler: Handler = SASUtil.getMainLooperHandler()
 
-    /**
-     * Implementation of CustomEventNative interface.
-     * Delegates the native ad call to the Smart AdServer SDK
-     */
-    public override fun requestNativeAd(context: Context,
-                                        customEventNativeListener: CustomEventNativeListener,
-                                        s: String?, nativeMediationAdRequest: NativeMediationAdRequest,
-                                        bundle: Bundle?) {
+    override fun getVersionInfo(): VersionInfo {
+        return SASGMAUtils.versionInfo
+    }
+    override fun getSDKVersionInfo(): VersionInfo {
+        return SASGMAUtils.SDKVersionInfo
+    }
+    override fun initialize(context: Context,
+                            initializationCompleteCallback: InitializationCompleteCallback,
+                            list: List<MediationConfiguration>) {
+        if (applicationContextWeakReference == null) {
+            applicationContextWeakReference = WeakReference<Context>(context.applicationContext)
 
-        // get the smart placement object
-        val placementString = s ?: ""
+            // Nothing more to do here, Smart banner does not require initialization
+            initializationCompleteCallback.onInitializationSucceeded()
+        }
+    }
+
+
+    override fun loadNativeAd(
+        mediationAdConfiguration: MediationNativeAdConfiguration,
+        mediationAdLoadCallback: MediationAdLoadCallback<UnifiedNativeAdMapper, MediationNativeAdCallback>
+    ) {
+
+        Log.d("SASGMAMediationNativeAdapter", "loadNativeAd for SASGMAMediationNativeAdapter")
+
+        // Get the Smart placement string parameter
+        val smartPlacementString = mediationAdConfiguration.serverParameters.getString("parameter") ?: ""
 
         // Configure the Smart Display SDK and retrieve the ad placement.
-        val adPlacement: SASAdPlacement? = SASGMAUtils.configureSDKAndGetAdPlacement(context, placementString, bundle)
+        applicationContextWeakReference?.get()?.let { context ->
+            val adPlacement = SASGMAUtils.configureSDKAndGetAdPlacement(
+                context,
+                smartPlacementString, mediationAdConfiguration.mediationExtras
+            )
 
-        // test if the ad placement is valid
-        if (adPlacement == null) {
-            // incorrect smart placement : exit in error
-            customEventNativeListener.onAdFailedToLoad(AdError(AdRequest.ERROR_CODE_INVALID_REQUEST,
-                    "Invalid Smart placement IDs. Please check server parameters string", AdError.UNDEFINED_DOMAIN))
-            return
-        }
-        if (sasNativeAdManager != null) {
-            // Quit if there is already a native ad being handled.
-            return
-        }
+            adPlacement?.let {
 
-        // instantiate SASNativeAdManager that will perform the Smart ad call
-        sasNativeAdManager = SASNativeAdManager(context, adPlacement)
+                // clean up any previous SASNativeAdManager
+                sasNativeAdManager?.onDestroy()
 
-        // set native ad listener
-        sasNativeAdManager?.nativeAdListener = object : NativeAdListener {
-            override fun onNativeAdLoaded(nativeAdElement: SASNativeAdElement) {
-                if (nativeMediationAdRequest.isUnifiedNativeAdRequested) {
-                    // convert Smart native ad to a Google UnifiedNativeAd
-                    processUnifiedNativeAdRequest(nativeAdElement, customEventNativeListener, nativeMediationAdRequest, context)
-                } else {
-                    // notify Google of a NO fill, as the ad received is not compatible
-                    handler.post { // return no ad
-                        customEventNativeListener.onAdFailedToLoad(
-                                AdError(AdRequest.ERROR_CODE_NO_FILL, "No ad to deliver", AdError.UNDEFINED_DOMAIN))
+                // instantiate SASNativeAdManager that will perform the Smart ad call
+                sasNativeAdManager = SASNativeAdManager(context, adPlacement).apply {
+                    // set native ad listener
+                    nativeAdListener = object : SASNativeAdManager.NativeAdListener {
+                        override fun onNativeAdLoaded(nativeAdElement: SASNativeAdElement) {
+                            // convert Smart native ad to a Google UnifiedNativeAd
+                            val unifiedNativeAdMapper = createUnifiedNativeAdRequest(
+                                nativeAdElement,
+                                mediationAdConfiguration.nativeAdOptions,
+                                context
+                            )
+
+                            // notify Google SDK of native ad loading success, and get corresponding callback to
+                            // forward native events
+                            val mediationNativeAdCallback = mediationAdLoadCallback.onSuccess(unifiedNativeAdMapper)
+
+                            // install a click listener on the SASNativeAdElement to notify back the customEventNativeListener
+                            nativeAdElement.onClickListener = SASNativeAdElement.OnClickListener { _, _ ->
+                                mediationNativeAdCallback.reportAdClicked()
+                                mediationNativeAdCallback.onAdOpened()
+                                mediationNativeAdCallback.onAdLeftApplication()
+                            }
+                        }
+
+                        override fun onNativeAdFailedToLoad(e: Exception) {
+                            handler.post {
+                                var errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR
+                                var errorMessage = e.message ?: ""
+                                if (e is SASNoAdToDeliverException) {
+                                    // no ad to deliver
+                                    errorCode = AdRequest.ERROR_CODE_NO_FILL
+                                    errorMessage = "No ad to deliver"
+                                } else if (e is SASAdTimeoutException) {
+                                    // ad request timeout translates to admob network error
+                                    errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR
+                                    errorMessage = "Timeout while waiting ad call response"
+                                }
+                                mediationAdLoadCallback.onFailure(AdError(errorCode, errorMessage, AdError.UNDEFINED_DOMAIN))
+                            }
+                        }
                     }
+
+                    // Now request ad for this SASNativeAdManager
+                    loadNativeAd()
                 }
 
-                // install a click listener on the SASNativeAdElement to notify back the customEventNativeListener
-                nativeAdElement.onClickListener = SASNativeAdElement.OnClickListener { _, _ ->
-                    customEventNativeListener.onAdClicked()
-                    customEventNativeListener.onAdOpened()
-                    customEventNativeListener.onAdLeftApplication()
-                }
-            }
+            }?: run {
+                // incorrect smart placement : exit in error
+                mediationAdLoadCallback.onFailure(
+                    AdError(AdRequest.ERROR_CODE_INVALID_REQUEST,
+                        "Invalid Smart placement IDs. Please check server parameters string", AdError.UNDEFINED_DOMAIN))
 
-            override fun onNativeAdFailedToLoad(e: Exception) {
-                handler.post {
-                    var errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR
-                    var errorMessage = e.message ?: ""
-                    if (e is SASNoAdToDeliverException) {
-                        // no ad to deliver
-                        errorCode = AdRequest.ERROR_CODE_NO_FILL
-                        errorMessage = "No ad to deliver"
-                    } else if (e is SASAdTimeoutException) {
-                        // ad request timeout translates to admob network error
-                        errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR
-                        errorMessage = "Timeout while waiting ad call response"
-                    }
-                    customEventNativeListener.onAdFailedToLoad(AdError(errorCode, errorMessage, AdError.UNDEFINED_DOMAIN))
-                }
             }
+        } ?: run {
+            mediationAdLoadCallback.onFailure(
+                AdError(AdRequest.ERROR_CODE_INVALID_REQUEST,
+                    "Context is null", AdError.UNDEFINED_DOMAIN))
         }
 
-        // Now request ad for this SASNativeAdManager
-        sasNativeAdManager?.loadNativeAd()
     }
 
     /**
      * Creates a [UnifiedNativeAdMapper] for the Smart native ad and pass it to Google SDK
      */
-    private fun processUnifiedNativeAdRequest(nativeAdElement: SASNativeAdElement,
-                                              customEventNativeListener: CustomEventNativeListener,
-                                              nativeMediationAdRequest: NativeMediationAdRequest,
-                                              context: Context) {
+    private fun createUnifiedNativeAdRequest(
+        nativeAdElement: SASNativeAdElement,
+        nativeAdOptions: NativeAdOptions,
+        context: Context
+    ) : UnifiedNativeAdMapper {
 
         // instantiate a UnifiedNativeAdMapper to map properties from the SASNativeAdElement
         // to the google native ad
@@ -163,14 +187,19 @@ class SASGMACustomEventNative : CustomEventNative {
 
         // Set native ad icon if available
         nativeAdElement.icon?.let { imageElement ->
-            getNativeAdImage(context, imageElement, nativeMediationAdRequest)?.let {
+            getNativeAdImage(
+                context,
+                imageElement,
+                nativeAdOptions
+            )?.let {
                 nativeAdMapper.icon = it
             }
         }
 
         // set native ad cover if available
         nativeAdElement.coverImage?.let { coverImage ->
-            getNativeAdImage(context, coverImage, nativeMediationAdRequest)?.let {
+            getNativeAdImage(context, coverImage, nativeAdOptions)
+                ?.let {
                 nativeAdMapper.images = ArrayList<NativeAd.Image?>().apply {
                     add(it)
                 }
@@ -198,38 +227,13 @@ class SASGMACustomEventNative : CustomEventNative {
                 nativeAdMapper.setMediaView(mediaView)
                 nativeAdMapper.setHasVideoContent(true)
             }
-
-            // notify Google tha a native ad was loaded
-            customEventNativeListener.onAdLoaded(nativeAdMapper)
         }
-    }
 
-    /**
-     * Implementation of CustomEventInterstitial interface.
-     * Forwards the onDestroy() call to the SASNativeAdManager instance
-     */
-    override fun onDestroy() {
-        sasNativeAdManager?.onDestroy()
-        sasNativeAdManager = null
-    }
-
-    /**
-     * Implementation of CustomEventNative interface.
-     * Forwards the onPause() call to SASNativeAdManager instance
-     */
-    override fun onPause() {
-        // not supported by SASNativeAdManager
-    }
-
-    /**
-     * Implementation of CustomEventNative interface.
-     * Forwards the onResume() call to the SASNativeAdManager instance
-     */
-    override fun onResume() {
-        // not supported by SASNativeAdManager
+        return nativeAdMapper
     }
 
     companion object {
+        private var applicationContextWeakReference: WeakReference<Context>? = null
 
         /**
          * Returns optimized inSampleSize based on the given width / height
@@ -272,16 +276,17 @@ class SASGMACustomEventNative : CustomEventNative {
          * @param nativeMediationAdRequest
          * @return
          */
-        private fun getNativeAdImage(context: Context, imageElement: ImageElement, nativeMediationAdRequest: NativeMediationAdRequest): NativeAd.Image? {
-
-            // should we download images ?
-            val downloadImages = nativeMediationAdRequest.getNativeAdOptions()?.shouldReturnUrlsForImageAssets()?.not() ?: true
+        private fun getNativeAdImage(
+            context: Context,
+            imageElement: SASNativeAdElement.ImageElement,
+            nativeAdOptions: NativeAdOptions): NativeAd.Image?
+        {
 
             val imageUrl = imageElement.url
 
             // create drawable containing image
             var imageDrawable: Drawable? = null
-            if (imageUrl.isNotEmpty() && downloadImages) {
+            if (imageUrl.isNotEmpty() && !nativeAdOptions.shouldReturnUrlsForImageAssets()) {
                 // try to retrieve contents at url
                 try {
                     val inputStream: InputStream = URL(imageUrl).content as InputStream
@@ -294,7 +299,7 @@ class SASGMACustomEventNative : CustomEventNative {
 
                     val bitmap: Bitmap? = BitmapFactory.decodeStream(inputStream, null, options )
                     imageDrawable = bitmap?.let { BitmapDrawable(context.resources, it) }
-                } catch (e: IOException) {
+                } catch (_: IOException) {
                 }
             }
 
@@ -315,5 +320,6 @@ class SASGMACustomEventNative : CustomEventNative {
                 }
             }
         }
+
     }
 }

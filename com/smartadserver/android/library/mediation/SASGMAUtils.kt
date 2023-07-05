@@ -2,16 +2,16 @@ package com.smartadserver.android.library.mediation
 
 import android.content.Context
 import android.os.Bundle
-import com.google.android.gms.ads.mediation.*
+import com.google.android.gms.ads.VersionInfo
 import com.smartadserver.android.coresdk.util.SCSConfiguration
 import com.smartadserver.android.library.model.SASAdPlacement
 import com.smartadserver.android.library.util.SASConfiguration
 import com.smartadserver.android.library.util.SASLibraryInfo
 
 /**
- * Base class of all other SASCustomEvent adapters. Handle the SDK configuration.
+ * Base class of all other Smart mediation adapter classes. Handles the SDK configuration.
  */
-object SASGMACustomEventUtil {
+object SASGMAUtils {
     @JvmField
     val MEDIATION_EXTRAS_SMART_KEYWORD_TARGETING_KEY: String = "smart_keyword_targeting"
 
@@ -30,45 +30,38 @@ object SASGMACustomEventUtil {
     fun configureSDKAndGetAdPlacement(context: Context,
                                       placementString: String,
                                       mediationExtras: Bundle?): SASAdPlacement? {
-        var siteId: Int = -1
-        var pageId: String = ""
-        var formatId: Int = -1
-        var targeting: String = ""
 
         // tokenize placement string and fill adPlacement;
         val ids = placementString.split("/")
         try {
-            siteId = ids.get(0).trim().toInt()
-            pageId = ids.get(1)
-            formatId = ids.get(2).trim().toInt()
+            val siteId = ids[0].trim().toInt()
+            val pageId = ids[1]
+            val formatId = ids[2].trim().toInt()
+
+            // configure the Smart Ad Server SDK if necessary
+            if (!SASConfiguration.getSharedInstance().isConfigured) {
+                try {
+                    if (siteId >= 1) {
+                        SASConfiguration.getSharedInstance().configure(context, siteId)
+                        SASConfiguration.getSharedInstance().isPrimarySdk = false
+                    } else {
+                        return null
+                    }
+                } catch (e: SCSConfiguration.ConfigurationException) {
+                    e.printStackTrace()
+                    return null
+                }
+            }
+
+            // extract custom targeting from mediation extras
+            val targeting = mediationExtras?.getString(MEDIATION_EXTRAS_SMART_KEYWORD_TARGETING_KEY)
+
+            return SASAdPlacement(siteId.toLong(), pageId, formatId.toLong(), targeting)
+
         } catch (e: Exception) {
             // invalid placement, return null
             return null
         }
-
-        // configure the Smart Ad Server SDK if necessary
-        if (!SASConfiguration.getSharedInstance().isConfigured()) {
-            try {
-                if (siteId >= 1) {
-                    SASConfiguration.getSharedInstance().configure(context, siteId)
-                    SASConfiguration.getSharedInstance().isPrimarySdk = false
-                } else {
-                    return null
-                }
-            } catch (e: SCSConfiguration.ConfigurationException) {
-                e.printStackTrace()
-                return null
-            }
-        }
-
-        // extract custom targeting from mediation extras
-        if (mediationExtras != null) {
-            val keywordTargeting: String? = mediationExtras.getString(MEDIATION_EXTRAS_SMART_KEYWORD_TARGETING_KEY)
-            if (keywordTargeting != null) {
-                targeting = keywordTargeting
-            }
-        }
-        return SASAdPlacement(siteId.toLong(), pageId, formatId.toLong(), targeting)
     }
 
     val versionInfo: VersionInfo
@@ -85,7 +78,7 @@ object SASGMACustomEventUtil {
         adapterVersionInfo = VersionInfo(1, 0, 0)
 
         //SDK version info
-        val versionInfo = SASLibraryInfo.getSharedInstance().getVersion().split(".")
+        val versionInfo = SASLibraryInfo.getSharedInstance().version.split(".")
 
         // we expect 3 tokens, no more, no less
         val majorVersion = versionInfo.getOrNull(0)?.toIntOrNull() ?: 0
