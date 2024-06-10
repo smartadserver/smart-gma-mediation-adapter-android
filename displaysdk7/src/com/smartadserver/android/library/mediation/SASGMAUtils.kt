@@ -2,16 +2,19 @@ package com.smartadserver.android.library.mediation
 
 import android.content.Context
 import android.os.Bundle
+import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.VersionInfo
-import com.smartadserver.android.coresdk.util.SCSConfiguration
 import com.smartadserver.android.library.model.SASAdPlacement
 import com.smartadserver.android.library.util.SASConfiguration
 import com.smartadserver.android.library.util.SASLibraryInfo
+import com.smartadserver.android.library.util.SASSecondaryImplementationInfo
 
 /**
  * Base class of all other Smart mediation adapter classes. Handles the SDK configuration.
  */
 object SASGMAUtils {
+    private val ADAPTER_VERSION = "1.1"
+
     @JvmField
     val MEDIATION_EXTRAS_SMART_KEYWORD_TARGETING_KEY: String = "smart_keyword_targeting"
 
@@ -43,11 +46,15 @@ object SASGMAUtils {
                 try {
                     if (siteId >= 1) {
                         SASConfiguration.getSharedInstance().configure(context, siteId)
-                        SASConfiguration.getSharedInstance().isPrimarySdk = false
+                        SASConfiguration.getSharedInstance().secondaryImplementationInfo = SASSecondaryImplementationInfo(
+                            "GoogleMobileAds",
+                            MobileAds.getVersion().toString(),
+                            ADAPTER_VERSION
+                        )
                     } else {
                         return null
                     }
-                } catch (e: SCSConfiguration.ConfigurationException) {
+                } catch (e: Exception) {
                     e.printStackTrace()
                     return null
                 }
