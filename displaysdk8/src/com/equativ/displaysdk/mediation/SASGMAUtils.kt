@@ -13,7 +13,11 @@ import com.google.android.gms.ads.VersionInfo
  * Base class of all other Equativ mediation adapter classes. Handles the SDK configuration.
  */
 object SASGMAUtils {
-    private const val ADAPTER_VERSION = "2.0"
+
+    // These adapters version
+    private const val ADAPTER_VERSION_MAJOR = 2
+    private const val ADAPTER_VERSION_MINOR = 0
+    private const val ADAPTER_VERSION_MICRO = 0
 
     @JvmField
     val MEDIATION_EXTRAS_EQUATIV_KEYWORD_TARGETING_KEY: String = "equativ_keyword_targeting"
@@ -51,7 +55,7 @@ object SASGMAUtils {
                         SASConfiguration.secondaryImplementationInfo = SASSecondaryImplementationInfo(
                             "GoogleMobileAds",
                             MobileAds.getVersion().toString(),
-                            ADAPTER_VERSION
+                            "$ADAPTER_VERSION_MAJOR.$ADAPTER_VERSION_MINOR.$ADAPTER_VERSION_MICRO"
                         )
                     } else {
                         return null
@@ -84,15 +88,19 @@ object SASGMAUtils {
 
     init {
         // adapters version info
-        adapterVersionInfo = VersionInfo(1, 0, 0)
+        adapterVersionInfo = VersionInfo(
+            ADAPTER_VERSION_MAJOR,
+            ADAPTER_VERSION_MINOR,
+            ADAPTER_VERSION_MICRO
+        )
 
         //SDK version info
         val versionInfo = SASLibraryInfo.version.split(".")
 
-        // we expect 3 tokens, no more, no lessÒ
+        // we expect 3 tokens, no more, no less
         val majorVersion = versionInfo.getOrNull(0)?.toIntOrNull() ?: 0
         val minorVersion = versionInfo.getOrNull(1)?.toIntOrNull() ?: 0
-        val microVersion = versionInfo.getOrNull(1)?.toIntOrNull() ?: 0
+        val microVersion = versionInfo.getOrNull(2)?.toIntOrNull() ?: 0
 
         sdkVersionInfo = VersionInfo(majorVersion, minorVersion, microVersion)
     }

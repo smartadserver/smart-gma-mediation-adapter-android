@@ -13,7 +13,11 @@ import com.smartadserver.android.library.util.SASSecondaryImplementationInfo
  * Base class of all other Smart mediation adapter classes. Handles the SDK configuration.
  */
 object SASGMAUtils {
-    private val ADAPTER_VERSION = "1.1"
+
+    // These adapters version
+    private const val ADAPTER_VERSION_MAJOR = 1
+    private const val ADAPTER_VERSION_MINOR = 1
+    private const val ADAPTER_VERSION_MICRO = 0
 
     @JvmField
     val MEDIATION_EXTRAS_SMART_KEYWORD_TARGETING_KEY: String = "smart_keyword_targeting"
@@ -49,7 +53,7 @@ object SASGMAUtils {
                         SASConfiguration.getSharedInstance().secondaryImplementationInfo = SASSecondaryImplementationInfo(
                             "GoogleMobileAds",
                             MobileAds.getVersion().toString(),
-                            ADAPTER_VERSION
+                            "$ADAPTER_VERSION_MAJOR.$ADAPTER_VERSION_MINOR.$ADAPTER_VERSION_MICRO"
                         )
                     } else {
                         return null
@@ -82,7 +86,11 @@ object SASGMAUtils {
 
     init {
         // adapters version info
-        adapterVersionInfo = VersionInfo(1, 0, 0)
+        adapterVersionInfo = VersionInfo(
+            ADAPTER_VERSION_MAJOR,
+            ADAPTER_VERSION_MINOR,
+            ADAPTER_VERSION_MICRO
+        )
 
         //SDK version info
         val versionInfo = SASLibraryInfo.getSharedInstance().version.split(".")
@@ -90,7 +98,7 @@ object SASGMAUtils {
         // we expect 3 tokens, no more, no less
         val majorVersion = versionInfo.getOrNull(0)?.toIntOrNull() ?: 0
         val minorVersion = versionInfo.getOrNull(1)?.toIntOrNull() ?: 0
-        val microVersion = versionInfo.getOrNull(1)?.toIntOrNull() ?: 0
+        val microVersion = versionInfo.getOrNull(2)?.toIntOrNull() ?: 0
 
         sdkVersionInfo = VersionInfo(majorVersion, minorVersion, microVersion)
     }
