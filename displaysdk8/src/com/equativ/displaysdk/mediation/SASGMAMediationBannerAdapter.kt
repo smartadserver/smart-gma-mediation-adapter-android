@@ -49,7 +49,7 @@ class SASGMAMediationBannerAdapter : Adapter(), MediationBannerAd {
         if (applicationContextWeakReference == null) {
             applicationContextWeakReference = WeakReference<Context>(context.applicationContext)
 
-            // Nothing more to do here, Equativ banner does not require initialization
+            // Nothing more to do here, the Equativ Display SDK does not require initialization at this stage
             initializationCompleteCallback.onInitializationSucceeded()
         }
     }
@@ -135,6 +135,18 @@ class SASGMAMediationBannerAdapter : Adapter(), MediationBannerAd {
                                 mediationBannerAdCallback?.run {
                                     reportAdClicked()
                                 }
+                            }
+                        }
+
+                        override fun onBannerAdCollapsed() {
+                            mediationBannerAdCallback?.run {
+                                this.onAdClosed()
+                            }
+                        }
+
+                        override fun onBannerAdExpanded() {
+                            mediationBannerAdCallback?.run {
+                                this.onAdOpened()
                             }
                         }
                     }

@@ -1,5 +1,6 @@
 package com.equativ.displaysdk.mediation
 
+import android.app.Activity
 import android.content.Context
 import android.util.Log
 import com.equativ.displaysdk.ad.interstitial.SASInterstitialManager
@@ -45,11 +46,15 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
         initializationCompleteCallback: InitializationCompleteCallback,
         list: List<MediationConfiguration>
     ) {
-        if (applicationContextWeakReference == null) {
-            applicationContextWeakReference = WeakReference<Context>(context.applicationContext)
+        if (context is Activity) {
+            if (activityWeakReference == null) {
+                activityWeakReference = WeakReference<Activity>(context)
 
-            // Nothing more to do here, Equativ Interstitial does not require initialization
-            initializationCompleteCallback.onInitializationSucceeded()
+                // Nothing more to do here, the Equativ Display SDK does not require initialization at this stage
+                initializationCompleteCallback.onInitializationSucceeded()
+            }
+        } else {
+            initializationCompleteCallback.onInitializationFailed("Can not initialize SASGMAMediationInterstitialAdapter as passed Context is not an Activity")
         }
     }
 
@@ -62,14 +67,14 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
             "loadInterstitialAd for SASGMAMediationInterstitialAdapter"
         )
 
-        // Get the Smart placement string parameter
-        val smartPlacementString = mediationAdConfiguration.serverParameters.getString("parameter") ?: ""
+        // Get the Equativ placement string parameter
+        val equativPlacementString = mediationAdConfiguration.serverParameters.getString("parameter") ?: ""
 
         // Configure the Equativ Display SDK and retrieve the ad placement.
-        applicationContextWeakReference?.get()?.let { context ->
+        activityWeakReference?.get()?.let { activity ->
             val adPlacement = SASGMAUtils.configureSDKAndGetAdPlacement(
-                context,
-                smartPlacementString,
+                activity,
+                equativPlacementString,
                 mediationAdConfiguration.mediationExtras
             )
 
@@ -79,7 +84,7 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
                 sasInterstitialManager?.onDestroy()
 
                 // Instantiate the SASInterstitialManager
-                sasInterstitialManager = SASInterstitialManager(context, adPlacement).also { interstitialManager ->
+                sasInterstitialManager = SASInterstitialManager(activity, adPlacement).also { interstitialManager ->
 
                     // Set a listener on this manager
                     interstitialManager.interstitialManagerListener = object :
@@ -87,7 +92,7 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
                         // get a main thread Handler to execute code on this thread
 
                         override fun onInterstitialAdLoaded(adInfo: SASAdInfo) {
-                            // Smart interstitial ad was successfully loaded
+                            // Equativ interstitial ad was successfully loaded
                             CoroutineScope(Dispatchers.Main).launch {
                                 mediationInterstitialAdCallback = mediationAdLoadCallback.onSuccess(this@SASGMAMediationInterstitialAdapter)
                             }
@@ -185,7 +190,7 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
     }
 
     companion object {
-        private var applicationContextWeakReference: WeakReference<Context>? = null
+        private var activityWeakReference: WeakReference<Activity>? = null
     }
 
 }
