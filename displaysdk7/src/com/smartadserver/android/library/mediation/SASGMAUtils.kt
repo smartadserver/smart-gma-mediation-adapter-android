@@ -17,7 +17,7 @@ object SASGMAUtils {
     // These adapters version
     private const val ADAPTER_VERSION_MAJOR = 1
     private const val ADAPTER_VERSION_MINOR = 1
-    private const val ADAPTER_VERSION_MICRO = 0
+    private const val ADAPTER_VERSION_MICRO = 1
 
     @JvmField
     val MEDIATION_EXTRAS_SMART_KEYWORD_TARGETING_KEY: String = "smart_keyword_targeting"

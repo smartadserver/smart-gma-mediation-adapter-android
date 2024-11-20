@@ -81,8 +81,6 @@ class SASGMAMediationNativeAdapter : Adapter() {
 
             adPlacement?.let {
 
-                // clean up any previous SASNativeAdManager
-                sasNativeAdManager?.onDestroy()
 
                 // instantiate SASNativeAdManager that will perform the Smart ad call
                 sasNativeAdManager = SASNativeAdManager(context, adPlacement).apply {
@@ -106,6 +104,8 @@ class SASGMAMediationNativeAdapter : Adapter() {
                                 mediationNativeAdCallback.onAdOpened()
                                 mediationNativeAdCallback.onAdLeftApplication()
                             }
+
+                            onDestroy()
                         }
 
                         override fun onNativeAdFailedToLoad(e: Exception) {
@@ -123,6 +123,14 @@ class SASGMAMediationNativeAdapter : Adapter() {
                                 }
                                 mediationAdLoadCallback.onFailure(AdError(errorCode, errorMessage, AdError.UNDEFINED_DOMAIN))
                             }
+
+                            onDestroy()
+                        }
+
+                        private fun onDestroy() {
+                            // dispose of SASNativeAdManager once native ad call is finished
+                            sasNativeAdManager?.onDestroy()
+                            sasNativeAdManager = null
                         }
                     }
 
