@@ -3,7 +3,6 @@ package com.equativ.displaysdk.mediation
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Color
 import android.graphics.Point
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -11,18 +10,14 @@ import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.RectShape
 import android.net.Uri
 import android.util.Log
-import android.util.TypedValue
 import android.view.View
 import android.view.View.OnClickListener
-import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.FrameLayout
-import android.widget.RelativeLayout
 import com.equativ.displaysdk.ad.nativead.SASNativeAdView
-import com.equativ.displaysdk.ad.nativead.SASNativeAdViewBinder
 import com.equativ.displaysdk.exception.SASException
 import com.equativ.displaysdk.model.SASAdInfo
 import com.equativ.displaysdk.model.SASNativeAdAssets
+import com.equativ.displaysdk.util.SASConfiguration
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.VersionInfo
@@ -58,7 +53,9 @@ class SASGMAMediationNativeAdapter : Adapter() {
         if (applicationContextWeakReference == null) {
             applicationContextWeakReference = WeakReference<Context>(context.applicationContext)
 
-            // Nothing more to do here, the Equativ Display SDK does not require initialization at this stage
+            // configure Equativ SDK
+            SASGMAUtils.configureEquativSDKIfNeeded(context)
+
             initializationCompleteCallback.onInitializationSucceeded()
         }
     }
@@ -70,6 +67,17 @@ class SASGMAMediationNativeAdapter : Adapter() {
 
         Log.d("SASGMAMediationNativeAdapter", "loadNativeAdMapper for SASGMAMediationNativeAdapter")
 
+        // safety check on SDK configuration status
+        if (!SASConfiguration.isConfigured) {
+            mediationAdLoadCallback.onFailure(
+                AdError(
+                    AdRequest.ERROR_CODE_INVALID_REQUEST,
+                    "Equativ SDK is not initialized", AdError.UNDEFINED_DOMAIN
+                )
+            )
+            return
+        }
+
         // Get the Equativ placement string parameter
         val equativPlacementString = mediationAdConfiguration.serverParameters.getString("parameter") ?: ""
 
@@ -77,13 +85,12 @@ class SASGMAMediationNativeAdapter : Adapter() {
 
         // Configure the Equativ Display SDK and retrieve the ad placement.
         applicationContextWeakReference?.get()?.let { context ->
-            val adPlacement = SASGMAUtils.configureSDKAndGetAdPlacement(
-                context,
-                equativPlacementString, mediationAdConfiguration.mediationExtras
+            val adPlacement = SASGMAUtils.getAdPlacement(
+                equativPlacementString,
+                mediationAdConfiguration.mediationExtras
             )
 
             adPlacement?.let {
-
                 val nativeAdView = SASNativeAdView(context).also { nativeAdView ->
 
                     // set the native ad listener to process native ad call outcome

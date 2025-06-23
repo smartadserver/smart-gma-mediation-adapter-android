@@ -7,6 +7,7 @@ import com.equativ.displaysdk.ad.interstitial.SASInterstitialManager
 import com.equativ.displaysdk.exception.SASException
 import com.equativ.displaysdk.model.SASAdInfo
 import com.equativ.displaysdk.model.SASAdStatus
+import com.equativ.displaysdk.util.SASConfiguration
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.VersionInfo
@@ -50,7 +51,9 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
             if (activityWeakReference == null) {
                 activityWeakReference = WeakReference<Activity>(context)
 
-                // Nothing more to do here, the Equativ Display SDK does not require initialization at this stage
+                // configure Equativ SDK
+                SASGMAUtils.configureEquativSDKIfNeeded(context)
+
                 initializationCompleteCallback.onInitializationSucceeded()
             }
         } else {
@@ -67,19 +70,28 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
             "loadInterstitialAd for SASGMAMediationInterstitialAdapter"
         )
 
+        // safety check on SDK configuration status
+        if (!SASConfiguration.isConfigured) {
+            mediationAdLoadCallback.onFailure(
+                AdError(
+                    AdRequest.ERROR_CODE_INVALID_REQUEST,
+                    "Equativ SDK is not initialized", AdError.UNDEFINED_DOMAIN
+                )
+            )
+            return
+        }
+
         // Get the Equativ placement string parameter
         val equativPlacementString = mediationAdConfiguration.serverParameters.getString("parameter") ?: ""
 
         // Configure the Equativ Display SDK and retrieve the ad placement.
         activityWeakReference?.get()?.let { activity ->
-            val adPlacement = SASGMAUtils.configureSDKAndGetAdPlacement(
-                activity,
+            val adPlacement = SASGMAUtils.getAdPlacement(
                 equativPlacementString,
                 mediationAdConfiguration.mediationExtras
             )
 
             adPlacement?.let {
-
                 // clean up any previous SASInterstitialManager
                 sasInterstitialManager?.onDestroy()
 

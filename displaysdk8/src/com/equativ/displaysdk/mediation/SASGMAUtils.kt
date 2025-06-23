@@ -34,8 +34,7 @@ object SASGMAUtils {
      * @param mediationExtras a Bundle containing mediation extra parameters as passed to the Google AdRequest in the application
      * @return a valid SASAdPlacement, or null if the SDK can not be configured or if the placement string is wrongly set.
      */
-    fun configureSDKAndGetAdPlacement(
-        context: Context,
+    fun getAdPlacement(
         placementString: String,
         mediationExtras: Bundle?
     ): SASAdPlacement? {
@@ -47,25 +46,6 @@ object SASGMAUtils {
             val pageId = ids[1].trim().toLong()
             val formatId = ids[2].trim().toLong()
 
-            // configure the Equativ Display SDK if necessary
-            if (!SASConfiguration.isConfigured) {
-                try {
-                    if (siteId >= 1) {
-                        SASConfiguration.configure(context)
-                        SASConfiguration.secondaryImplementationInfo = SASSecondaryImplementationInfo(
-                            "GoogleMobileAds",
-                            MobileAds.getVersion().toString(),
-                            "$ADAPTER_VERSION_MAJOR.$ADAPTER_VERSION_MINOR.$ADAPTER_VERSION_MICRO"
-                        )
-                    } else {
-                        return null
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    return null
-                }
-            }
-
             // extract custom targeting from mediation extras
             val targeting = mediationExtras?.getString(MEDIATION_EXTRAS_EQUATIV_KEYWORD_TARGETING_KEY)
 
@@ -74,6 +54,24 @@ object SASGMAUtils {
         } catch (e: Exception) {
             // invalid placement, return null
             return null
+        }
+    }
+
+    /**
+     * Performs all needed configuration steps for the Equativ SDK
+     */
+    fun configureEquativSDKIfNeeded(context: Context) {
+        if (!SASConfiguration.isConfigured) {
+            try {
+                SASConfiguration.configure(context)
+                SASConfiguration.secondaryImplementationInfo = SASSecondaryImplementationInfo(
+                    "GoogleMobileAds",
+                    MobileAds.getVersion().toString(),
+                    "$ADAPTER_VERSION_MAJOR.$ADAPTER_VERSION_MINOR.$ADAPTER_VERSION_MICRO"
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
