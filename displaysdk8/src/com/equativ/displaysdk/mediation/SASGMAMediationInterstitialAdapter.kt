@@ -21,7 +21,6 @@ import com.google.android.gms.ads.mediation.MediationInterstitialAdConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.lang.ref.WeakReference
 
 /**
  * Class that handles Google Mobile Ads mediation interstitial ad calls to Equativ AdServer SDK.
@@ -47,18 +46,9 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
         initializationCompleteCallback: InitializationCompleteCallback,
         list: List<MediationConfiguration>
     ) {
-        if (context is Activity) {
-            if (activityWeakReference == null) {
-                activityWeakReference = WeakReference<Activity>(context)
-
-                // configure Equativ SDK
-                SASGMAUtils.configureEquativSDKIfNeeded(context)
-
-                initializationCompleteCallback.onInitializationSucceeded()
-            }
-        } else {
-            initializationCompleteCallback.onInitializationFailed("Can not initialize SASGMAMediationInterstitialAdapter as passed Context is not an Activity")
-        }
+        // configure Equativ SDK
+        SASGMAUtils.configureEquativSDKIfNeeded(context)
+        initializationCompleteCallback.onInitializationSucceeded()
     }
 
     override fun loadInterstitialAd(
@@ -84,8 +74,13 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
         // Get the Equativ placement string parameter
         val equativPlacementString = mediationAdConfiguration.serverParameters.getString("parameter") ?: ""
 
-        // Configure the Equativ Display SDK and retrieve the ad placement.
-        activityWeakReference?.get()?.let { activity ->
+        // we need an Activity to proceed with interstitial ad loading
+        var activity: Activity? = mediationAdConfiguration.context as? Activity
+
+        // if activity is not null, proceed, otherwise call mediationAdLoadCallback.onFailure
+        activity?.let { activity ->
+
+            // Retrieve the Equativ ad placement.
             val adPlacement = SASGMAUtils.getAdPlacement(
                 equativPlacementString,
                 mediationAdConfiguration.mediationExtras
@@ -187,7 +182,7 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
             mediationAdLoadCallback.onFailure(
                 AdError(
                     AdRequest.ERROR_CODE_INVALID_REQUEST,
-                    "Context is null", AdError.UNDEFINED_DOMAIN
+                    "Context is not a non null Activity", AdError.UNDEFINED_DOMAIN
                 )
             )
         }
@@ -200,9 +195,4 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
             }
         }
     }
-
-    companion object {
-        private var activityWeakReference: WeakReference<Activity>? = null
-    }
-
 }

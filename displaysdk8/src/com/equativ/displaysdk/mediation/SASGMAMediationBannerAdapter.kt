@@ -22,7 +22,6 @@ import com.google.android.gms.ads.mediation.MediationConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.lang.ref.WeakReference
 
 /**
  * Class that handles Google Mobile Ads mediation banner ad calls to Equativ Display SDK.
@@ -47,14 +46,9 @@ class SASGMAMediationBannerAdapter : Adapter(), MediationBannerAd {
         initializationCompleteCallback: InitializationCompleteCallback,
         list: List<MediationConfiguration>
     ) {
-        if (applicationContextWeakReference == null) {
-            applicationContextWeakReference = WeakReference<Context>(context.applicationContext)
-
-            // configure Equativ SDK
-            SASGMAUtils.configureEquativSDKIfNeeded(context)
-
-            initializationCompleteCallback.onInitializationSucceeded()
-        }
+        // configure Equativ SDK
+        SASGMAUtils.configureEquativSDKIfNeeded(context)
+        initializationCompleteCallback.onInitializationSucceeded()
     }
 
     override fun loadBannerAd(
@@ -78,116 +72,102 @@ class SASGMAMediationBannerAdapter : Adapter(), MediationBannerAd {
             return
         }
 
-        // Configure the Equativ Display SDK and retrieve the ad placement.
-        applicationContextWeakReference?.get()?.let { context ->
-            val adPlacement = SASGMAUtils.getAdPlacement(
-                equativPlacementString,
-                mediationAdConfiguration.mediationExtras
-            )
+        // Retrieve the Equativ ad placement.
+        val adPlacement = SASGMAUtils.getAdPlacement(
+            equativPlacementString,
+            mediationAdConfiguration.mediationExtras
+        )
 
-            adPlacement?.let {
-                // clean up any previous SASBannerView
-                sasBannerView?.onDestroy()
+        adPlacement?.let {
+            // clean up any previous SASBannerView
+            sasBannerView?.onDestroy()
 
-                // Instantiate the SASBannerView
-                sasBannerView = SASBannerView(context).also { banner ->
+            // Instantiate the SASBannerView
+            sasBannerView = SASBannerView(mediationAdConfiguration.context).also { banner ->
 
-                    banner.layoutParams = ViewGroup.LayoutParams(
-                        size.getWidthInPixels(context),
-                        size.getHeightInPixels(context)
-                    )
-                    // Set a listener on the SASBannerView
-                    banner.bannerListener = object : SASBannerView.BannerListener {
-                        // get a Handler on the main thread to execute code on this thread
+                banner.layoutParams = ViewGroup.LayoutParams(
+                    size.getWidthInPixels(mediationAdConfiguration.context),
+                    size.getHeightInPixels(mediationAdConfiguration.context)
+                )
+                // Set a listener on the SASBannerView
+                banner.bannerListener = object : SASBannerView.BannerListener {
+                    // get a Handler on the main thread to execute code on this thread
 
-                        override fun onBannerAdLoaded(adInfo: SASAdInfo) {
-                            // Equativ banner ad was successfully loaded
-                            CoroutineScope(Dispatchers.Main).launch {
-                                mediationBannerAdCallback = mediationAdLoadCallback.onSuccess(this@SASGMAMediationBannerAdapter)
-                            }
+                    override fun onBannerAdLoaded(adInfo: SASAdInfo) {
+                        // Equativ banner ad was successfully loaded
+                        CoroutineScope(Dispatchers.Main).launch {
+                            mediationBannerAdCallback = mediationAdLoadCallback.onSuccess(this@SASGMAMediationBannerAdapter)
                         }
+                    }
 
-                        override fun onBannerAdRequestClose() {
-                            // Nothing to do
-                        }
+                    override fun onBannerAdRequestClose() {
+                        // Nothing to do
+                    }
 
-                        override fun onBannerAdFailedToLoad(exception: SASException) {
-                            // Equativ banner ad failed to load
-                            CoroutineScope(Dispatchers.Main).launch {
-                                var errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR
-                                var errorMessage = exception.message ?: ""
+                    override fun onBannerAdFailedToLoad(exception: SASException) {
+                        // Equativ banner ad failed to load
+                        CoroutineScope(Dispatchers.Main).launch {
+                            var errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR
+                            var errorMessage = exception.message ?: ""
 
-                                when (exception.type) {
-                                    SASException.Type.NO_AD -> {
-                                        // no ad to deliver
-                                        errorCode = AdRequest.ERROR_CODE_NO_FILL
-                                        errorMessage = "No ad to deliver"
-                                    }
-
-                                    SASException.Type.TIMEOUT -> {
-                                        // ad request timeout translates to admob network error
-                                        errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR
-                                        errorMessage = "Timeout while waiting ad call response"
-                                    }
-
-                                    else -> {
-                                        // keep message and code init values
-                                    }
+                            when (exception.type) {
+                                SASException.Type.NO_AD -> {
+                                    // no ad to deliver
+                                    errorCode = AdRequest.ERROR_CODE_NO_FILL
+                                    errorMessage = "No ad to deliver"
                                 }
 
-                                mediationAdLoadCallback.onFailure(
-                                    AdError(errorCode, errorMessage, AdError.UNDEFINED_DOMAIN)
-                                )
-                            }
-                        }
+                                SASException.Type.TIMEOUT -> {
+                                    // ad request timeout translates to admob network error
+                                    errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR
+                                    errorMessage = "Timeout while waiting ad call response"
+                                }
 
-                        override fun onBannerAdClicked() {
-                            // Equativ banner ad was clicked
-                            CoroutineScope(Dispatchers.Main).launch {
-                                mediationBannerAdCallback?.run {
-                                    reportAdClicked()
+                                else -> {
+                                    // keep message and code init values
                                 }
                             }
-                        }
 
-                        override fun onBannerAdCollapsed() {
-                            mediationBannerAdCallback?.run {
-                                this.onAdClosed()
-                            }
+                            mediationAdLoadCallback.onFailure(
+                                AdError(errorCode, errorMessage, AdError.UNDEFINED_DOMAIN)
+                            )
                         }
+                    }
 
-                        override fun onBannerAdExpanded() {
+                    override fun onBannerAdClicked() {
+                        // Equativ banner ad was clicked
+                        CoroutineScope(Dispatchers.Main).launch {
                             mediationBannerAdCallback?.run {
-                                this.onAdOpened()
+                                reportAdClicked()
                             }
                         }
                     }
-                    // Now request ad for this SASBannerView
-                    banner.loadAd(adPlacement)
-                }
-            } ?: run {
-                // incorrect Equativ placement : exit in error
-                mediationAdLoadCallback.onFailure(
-                    AdError(
-                        AdRequest.ERROR_CODE_INVALID_REQUEST,
-                        "Invalid Equativ placement IDs. Please check server parameters string",
-                        AdError.UNDEFINED_DOMAIN
-                    )
-                )
 
+                    override fun onBannerAdCollapsed() {
+                        mediationBannerAdCallback?.run {
+                            this.onAdClosed()
+                        }
+                    }
+
+                    override fun onBannerAdExpanded() {
+                        mediationBannerAdCallback?.run {
+                            this.onAdOpened()
+                        }
+                    }
+                }
+                // Now request ad for this SASBannerView
+                banner.loadAd(adPlacement)
             }
         } ?: run {
+            // incorrect Equativ placement : exit in error
             mediationAdLoadCallback.onFailure(
                 AdError(
                     AdRequest.ERROR_CODE_INVALID_REQUEST,
-                    "Context is null", AdError.UNDEFINED_DOMAIN
+                    "Invalid Equativ placement IDs. Please check server parameters string",
+                    AdError.UNDEFINED_DOMAIN
                 )
             )
         }
-    }
-
-    companion object {
-        private var applicationContextWeakReference: WeakReference<Context>? = null
     }
 
     override fun getView(): View {

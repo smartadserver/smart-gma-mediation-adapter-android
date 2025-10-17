@@ -31,7 +31,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.InputStream
-import java.lang.ref.WeakReference
 import java.net.URL
 
 /**
@@ -49,15 +48,11 @@ class SASGMAMediationNativeAdapter : Adapter() {
 
     override fun initialize(context: Context,
                             initializationCompleteCallback: InitializationCompleteCallback,
-                            list: List<MediationConfiguration>) {
-        if (applicationContextWeakReference == null) {
-            applicationContextWeakReference = WeakReference<Context>(context.applicationContext)
-
-            // configure Equativ SDK
-            SASGMAUtils.configureEquativSDKIfNeeded(context)
-
-            initializationCompleteCallback.onInitializationSucceeded()
-        }
+                            list: List<MediationConfiguration>)
+    {
+        // configure Equativ SDK
+        SASGMAUtils.configureEquativSDKIfNeeded(context)
+        initializationCompleteCallback.onInitializationSucceeded()
     }
 
     override fun loadNativeAdMapper(
@@ -83,90 +78,85 @@ class SASGMAMediationNativeAdapter : Adapter() {
 
         var mediationNativeAdCallback: MediationNativeAdCallback? = null
 
-        // Configure the Equativ Display SDK and retrieve the ad placement.
-        applicationContextWeakReference?.get()?.let { context ->
-            val adPlacement = SASGMAUtils.getAdPlacement(
-                equativPlacementString,
-                mediationAdConfiguration.mediationExtras
-            )
 
-            adPlacement?.let {
-                val nativeAdView = SASNativeAdView(context).also { nativeAdView ->
+        // Retrieve the Equativ ad placement.
+        val adPlacement = SASGMAUtils.getAdPlacement(
+            equativPlacementString,
+            mediationAdConfiguration.mediationExtras
+        )
 
-                    // set the native ad listener to process native ad call outcome
-                    nativeAdView.nativeAdListener = object : SASNativeAdView.NativeAdListener {
+        adPlacement?.let {
+            val nativeAdView = SASNativeAdView(mediationAdConfiguration.context).also { nativeAdView ->
 
-                        override fun onNativeAdClicked() {
-                            mediationNativeAdCallback?.reportAdClicked()
-                            mediationNativeAdCallback?.onAdOpened()
-                            mediationNativeAdCallback?.onAdLeftApplication()
-                        }
+                // set the native ad listener to process native ad call outcome
+                nativeAdView.nativeAdListener = object : SASNativeAdView.NativeAdListener {
 
-                        override fun onNativeAdFailedToLoad(exception: SASException) {
-                            CoroutineScope(Dispatchers.Main).launch {
-                                var errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR
-                                var errorMessage = exception.message ?: ""
+                    override fun onNativeAdClicked() {
+                        mediationNativeAdCallback?.reportAdClicked()
+                        mediationNativeAdCallback?.onAdOpened()
+                        mediationNativeAdCallback?.onAdLeftApplication()
+                    }
 
-                                when (exception.type) {
-                                    SASException.Type.NO_AD -> {
-                                        // no ad to deliver
-                                        errorCode = AdRequest.ERROR_CODE_NO_FILL
-                                        errorMessage = "No ad to deliver"
-                                    }
+                    override fun onNativeAdFailedToLoad(exception: SASException) {
+                        CoroutineScope(Dispatchers.Main).launch {
+                            var errorCode = AdRequest.ERROR_CODE_INTERNAL_ERROR
+                            var errorMessage = exception.message ?: ""
 
-                                    SASException.Type.TIMEOUT -> {
-                                        // ad request timeout translates to admob network error
-                                        errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR
-                                        errorMessage = "Timeout while waiting ad call response"
-                                    }
-
-                                    else -> {
-                                        // keep message and code init values
-                                    }
+                            when (exception.type) {
+                                SASException.Type.NO_AD -> {
+                                    // no ad to deliver
+                                    errorCode = AdRequest.ERROR_CODE_NO_FILL
+                                    errorMessage = "No ad to deliver"
                                 }
 
-                                mediationAdLoadCallback.onFailure(
-                                    AdError(errorCode, errorMessage, AdError.UNDEFINED_DOMAIN)
-                                )
+                                SASException.Type.TIMEOUT -> {
+                                    // ad request timeout translates to admob network error
+                                    errorCode = AdRequest.ERROR_CODE_NETWORK_ERROR
+                                    errorMessage = "Timeout while waiting ad call response"
+                                }
+
+                                else -> {
+                                    // keep message and code init values
+                                }
                             }
-                        }
 
-                        override fun onNativeAdLoaded(
-                            adInfo: SASAdInfo,
-                            nativeAdAssets: SASNativeAdAssets
-                        ) {
-                            // convert Equativ native ad to a Google NativeAd via a NativeAdMapper instance
-                            val nativeAdMapper = createNativeAdMapper(
-                                nativeAdAssets,
-                                mediationAdConfiguration.nativeAdOptions,
-                                nativeAdView,
-                                context
+                            mediationAdLoadCallback.onFailure(
+                                AdError(errorCode, errorMessage, AdError.UNDEFINED_DOMAIN)
                             )
-
-                            // notify Google SDK of native ad loading success, and get corresponding callback to
-                            // forward native events
-                            mediationNativeAdCallback = mediationAdLoadCallback.onSuccess(nativeAdMapper)
-                        }
-
-                        override fun onNativeAdRequestClose() {
-                            // not supported
                         }
                     }
+
+                    override fun onNativeAdLoaded(
+                        adInfo: SASAdInfo,
+                        nativeAdAssets: SASNativeAdAssets
+                    ) {
+                        // convert Equativ native ad to a Google NativeAd via a NativeAdMapper instance
+                        val nativeAdMapper = createNativeAdMapper(
+                            nativeAdAssets,
+                            mediationAdConfiguration.nativeAdOptions,
+                            nativeAdView,
+                            mediationAdConfiguration.context
+                        )
+
+                        // notify Google SDK of native ad loading success, and get corresponding callback to
+                        // forward native events
+                        mediationNativeAdCallback = mediationAdLoadCallback.onSuccess(nativeAdMapper)
+                    }
+
+                    override fun onNativeAdRequestClose() {
+                        // not supported
+                    }
                 }
-
-                // trigger the native ad call
-                nativeAdView.loadAd(adPlacement)
-            }?: run {
-                // incorrect Equativ placement : exit in error
-                mediationAdLoadCallback.onFailure(
-                    AdError(AdRequest.ERROR_CODE_INVALID_REQUEST,
-                        "Invalid Equativ placement IDs. Please check server parameters string", AdError.UNDEFINED_DOMAIN))
-
             }
-        } ?: run {
+
+            // trigger the native ad call
+            nativeAdView.loadAd(adPlacement)
+        }?: run {
+            // incorrect Equativ placement : exit in error
             mediationAdLoadCallback.onFailure(
                 AdError(AdRequest.ERROR_CODE_INVALID_REQUEST,
-                    "Context is null", AdError.UNDEFINED_DOMAIN))
+                    "Invalid Equativ placement IDs. Please check server parameters string", AdError.UNDEFINED_DOMAIN))
+
         }
     }
 
@@ -239,7 +229,6 @@ class SASGMAMediationNativeAdapter : Adapter() {
     }
 
     companion object {
-        private var applicationContextWeakReference: WeakReference<Context>? = null
 
         /**
          * Returns optimized inSampleSize based on the given width / height
