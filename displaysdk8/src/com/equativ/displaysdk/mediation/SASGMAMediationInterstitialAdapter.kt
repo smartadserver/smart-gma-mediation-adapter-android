@@ -72,26 +72,23 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
         }
 
         // Get the Equativ placement string parameter
-        val equativPlacementString = mediationAdConfiguration.serverParameters.getString("parameter") ?: ""
+        val equativPlacementString =
+            mediationAdConfiguration.serverParameters.getString("parameter") ?: ""
 
-        // we need an Activity to proceed with interstitial ad loading
-        var activity: Activity? = mediationAdConfiguration.context as? Activity
 
-        // if activity is not null, proceed, otherwise call mediationAdLoadCallback.onFailure
-        activity?.let { activity ->
+        // Retrieve the Equativ ad placement.
+        val adPlacement = SASGMAUtils.getAdPlacement(
+            equativPlacementString,
+            mediationAdConfiguration.mediationExtras
+        )
 
-            // Retrieve the Equativ ad placement.
-            val adPlacement = SASGMAUtils.getAdPlacement(
-                equativPlacementString,
-                mediationAdConfiguration.mediationExtras
-            )
+        adPlacement?.let {
+            // clean up any previous SASInterstitialManager
+            sasInterstitialManager?.onDestroy()
 
-            adPlacement?.let {
-                // clean up any previous SASInterstitialManager
-                sasInterstitialManager?.onDestroy()
-
-                // Instantiate the SASInterstitialManager
-                sasInterstitialManager = SASInterstitialManager(activity, adPlacement).also { interstitialManager ->
+            // Instantiate the SASInterstitialManager
+            sasInterstitialManager =
+                SASInterstitialManager(context = mediationAdConfiguration.context, adPlacement).also { interstitialManager ->
 
                     // Set a listener on this manager
                     interstitialManager.interstitialManagerListener = object :
@@ -101,7 +98,8 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
                         override fun onInterstitialAdLoaded(adInfo: SASAdInfo) {
                             // Equativ interstitial ad was successfully loaded
                             CoroutineScope(Dispatchers.Main).launch {
-                                mediationInterstitialAdCallback = mediationAdLoadCallback.onSuccess(this@SASGMAMediationInterstitialAdapter)
+                                mediationInterstitialAdCallback =
+                                    mediationAdLoadCallback.onSuccess(this@SASGMAMediationInterstitialAdapter)
                             }
                         }
 
@@ -167,22 +165,13 @@ class SASGMAMediationInterstitialAdapter : Adapter(), MediationInterstitialAd {
                     // Now request ad on this SASInterstitialManager
                     interstitialManager.loadAd()
                 }
-            } ?: run {
-                // incorrect Equativ placement : exit in error
-                mediationAdLoadCallback.onFailure(
-                    AdError(
-                        AdRequest.ERROR_CODE_INVALID_REQUEST,
-                        "Invalid Equativ placement IDs. Please check server parameters string",
-                        AdError.UNDEFINED_DOMAIN
-                    )
-                )
-
-            }
         } ?: run {
+            // incorrect Equativ placement : exit in error
             mediationAdLoadCallback.onFailure(
                 AdError(
                     AdRequest.ERROR_CODE_INVALID_REQUEST,
-                    "Context is not a non null Activity", AdError.UNDEFINED_DOMAIN
+                    "Invalid Equativ placement IDs. Please check server parameters string",
+                    AdError.UNDEFINED_DOMAIN
                 )
             )
         }
